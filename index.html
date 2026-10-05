@@ -70,7 +70,7 @@
       <a href="#calendar-title" data-menu-page="tasks" data-menu-scroll="#calendar-title">Календарь</a>
       <a href="#subjects-view" data-menu-page="subjects">Предметы</a>
       <a href="#schedule-view" data-menu-page="schedule">Расписание</a>
-      <a href="https://github.com/fuk29385-stack/CCC/issues" target="_blank" rel="noopener noreferrer">Связаться с нами</a>
+      <a href="#contact-dialog" data-contact-open>Связаться с нами</a>
     </nav>
   </dialog>
 
@@ -291,6 +291,28 @@
       <footer>
         <button type="submit">Сохранить</button>
         <button id="schedule-cancel" type="button">Отменить</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="contact-dialog" aria-labelledby="contact-dialog-title">
+    <form class="task-form" id="contact-form" novalidate>
+      <header>
+        <h2 id="contact-dialog-title">Связаться с нами</h2>
+      </header>
+      <label for="contact-name">Имя</label>
+      <input id="contact-name" name="name" type="text" autocomplete="name" maxlength="100" required>
+      <label for="contact-email">Email</label>
+      <input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+      <label for="contact-subject">Тема</label>
+      <input id="contact-subject" name="subject" type="text" maxlength="150" required>
+      <label for="contact-message">Сообщение</label>
+      <textarea id="contact-message" name="message" rows="5" minlength="10" maxlength="5000" required></textarea>
+      <input name="botcheck" type="checkbox" value="" tabindex="-1" autocomplete="off" hidden>
+      <p class="contact-status" id="contact-status" role="status" aria-live="polite"></p>
+      <footer>
+        <button id="contact-submit" type="submit">Отправить сообщение</button>
+        <button id="contact-cancel" type="button">Отменить</button>
       </footer>
     </form>
   </dialog>

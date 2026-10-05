@@ -2,7 +2,20 @@ const STORAGE_KEY = "college-control-center.tasks";
 const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
 const THEME_STORAGE_KEY = "college-control-center.theme";
+const CONTACT_ACCESS_KEY = "ВСТАВЬ_КЛЮЧ";
+const CONTACT_COOLDOWN_KEY = "college-control-center.contact-last-submit";
+const CONTACT_COOLDOWN_MS = 30_000;
 const SUBJECT_COLORS = ["#50bd66", "#4a90d9", "#df8750", "#9a70c5", "#d45b66", "#3a9c9a"];
+
+function loadLastContactSubmission() {
+	try {
+		const timestamp = Number(localStorage.getItem(CONTACT_COOLDOWN_KEY));
+		return Number.isFinite(timestamp) ? timestamp : 0;
+	} catch (error) {
+		console.error("Не удалось прочитать время последней отправки формы.", error);
+		return 0;
+	}
+}
 
 function createId() {
 	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -349,6 +362,15 @@ const importFileInput = document.querySelector("#import-file");
 const notificationButton = document.querySelector("#enable-notifications");
 const reminderBanner = document.querySelector("#reminder-banner");
 const reminderMessage = document.querySelector("#reminder-message");
+const contactDialog = document.querySelector("#contact-dialog");
+const contactForm = document.querySelector("#contact-form");
+const contactStatus = document.querySelector("#contact-status");
+const contactSubmitButton = document.querySelector("#contact-submit");
+const contactFields = ["name", "email", "subject", "message"]
+	.map((name) => contactForm.elements.namedItem(name));
+let lastContactSubmissionAt = loadLastContactSubmission();
+let contactCooldownTimer = null;
+let isContactSending = false;
 for (const dialog of document.querySelectorAll("dialog")) {
 	dialog.addEventListener("keydown", (event) => {
 		if (event.key !== "Escape") return;
@@ -493,6 +515,189 @@ function switchPage(pageName) {
 function closeSidePanel() {
 	if (sidePanel.open) sidePanel.close();
 }
+
+function getContactCooldownSeconds() {
+	return Math.max(0, Math.ceil((lastContactSubmissionAt + CONTACT_COOLDOWN_MS - Date.now()) / 1000));
+}
+
+function refreshContactSubmissionTimestamp() {
+	try {
+		const storedTimestamp = Number(localStorage.getItem(CONTACT_COOLDOWN_KEY));
+		if (Number.isFinite(storedTimestamp)) {
+			lastContactSubmissionAt = Math.max(lastContactSubmissionAt, storedTimestamp);
+		}
+	} catch (error) {
+		console.error("Не удалось проверить интервал между отправками формы.", error);
+	}
+}
+
+function updateContactSubmitButton() {
+	const remainingSeconds = getContactCooldownSeconds();
+	contactSubmitButton.classList.toggle("is-loading", isContactSending);
+	contactSubmitButton.disabled = isContactSending || remainingSeconds > 0;
+	contactSubmitButton.textContent = isContactSending
+		? "Отправка…"
+		: remainingSeconds > 0
+			? `Повторить через ${remainingSeconds} с`
+			: "Отправить сообщение";
+
+	if (remainingSeconds === 0 && contactCooldownTimer !== null) {
+		window.clearInterval(contactCooldownTimer);
+		contactCooldownTimer = null;
+	}
+}
+
+function startContactCooldown() {
+	updateContactSubmitButton();
+	if (contactCooldownTimer === null) {
+		contactCooldownTimer = window.setInterval(updateContactSubmitButton, 1000);
+	}
+}
+
+function validateContactForm() {
+	let isValid = true;
+
+	for (const field of contactFields) {
+		const value = field.value.trim();
+		let message = "";
+		if (!value) {
+			message = `Заполните поле «${field.labels[0].textContent}».`;
+		} else if (field.name === "email" && !field.validity.valid) {
+			message = "Введите корректный адрес email.";
+		} else if (field.name === "message" && value.length < 10) {
+			message = "Сообщение должно содержать не менее 10 символов.";
+		} else if (field.name === "name" && value.length > 100) {
+			message = "Имя не должно превышать 100 символов.";
+		} else if (field.name === "subject" && value.length > 150) {
+			message = "Тема не должна превышать 150 символов.";
+		} else if (field.name === "message" && value.length > 5000) {
+			message = "Сообщение не должно превышать 5000 символов.";
+		}
+
+		const errorId = `${field.id}-error`;
+		let error = document.getElementById(errorId);
+		if (!error) {
+			error = document.createElement("span");
+			error.id = errorId;
+			error.className = "field-error";
+			error.setAttribute("aria-live", "polite");
+			field.insertAdjacentElement("afterend", error);
+		}
+
+		error.textContent = message;
+		error.hidden = !message;
+		if (message) {
+			field.setAttribute("aria-invalid", "true");
+			field.setAttribute("aria-describedby", errorId);
+			isValid = false;
+		} else {
+			field.removeAttribute("aria-invalid");
+			field.removeAttribute("aria-describedby");
+		}
+	}
+
+	return isValid;
+}
+
+for (const field of contactFields) {
+	field.addEventListener("input", () => {
+		if (field.hasAttribute("aria-invalid")) validateContactForm();
+	});
+}
+
+contactForm.addEventListener("submit", async (event) => {
+	event.preventDefault();
+	contactStatus.textContent = "";
+	contactStatus.className = "contact-status";
+	if (!validateContactForm()) {
+		contactFields.find((field) => field.hasAttribute("aria-invalid"))?.focus();
+		return;
+	}
+
+	refreshContactSubmissionTimestamp();
+	const remainingSeconds = getContactCooldownSeconds();
+	if (remainingSeconds > 0) {
+		contactStatus.textContent = `Повторно отправить сообщение можно через ${remainingSeconds} с.`;
+		startContactCooldown();
+		return;
+	}
+
+	if (CONTACT_ACCESS_KEY === "ВСТАВЬ_КЛЮЧ") {
+		contactStatus.textContent = "Форма пока не настроена: укажите ключ Web3Forms в app.js.";
+		contactStatus.classList.add("is-error");
+		return;
+	}
+
+	isContactSending = true;
+	updateContactSubmitButton();
+	lastContactSubmissionAt = Date.now();
+	try {
+		localStorage.setItem(CONTACT_COOLDOWN_KEY, String(lastContactSubmissionAt));
+	} catch (error) {
+		console.error("Не удалось сохранить интервал защиты формы от повторной отправки.", error);
+	}
+	startContactCooldown();
+
+	try {
+		const response = await fetch("https://api.web3forms.com/submit", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				access_key: CONTACT_ACCESS_KEY,
+				name: contactForm.elements.name.value.trim(),
+				email: contactForm.elements.email.value.trim(),
+				subject: contactForm.elements.subject.value.trim(),
+				message: contactForm.elements.message.value.trim(),
+				botcheck: "",
+			}),
+		});
+		let result;
+		try {
+			result = await response.json();
+		} catch {
+			throw new Error("Сервис вернул некорректный ответ.");
+		}
+		if (!response.ok || result?.success !== true) {
+			throw new Error(typeof result?.message === "string" ? result.message : "Сервис не принял сообщение.");
+		}
+
+		contactForm.reset();
+		for (const field of contactFields) {
+			field.removeAttribute("aria-invalid");
+			field.removeAttribute("aria-describedby");
+			document.getElementById(`${field.id}-error`)?.remove();
+		}
+		contactStatus.textContent = "Сообщение отправлено. Спасибо, что связались с нами!";
+		contactStatus.classList.add("is-success");
+	} catch (error) {
+		console.error("Не удалось отправить сообщение через Web3Forms.", error);
+		contactStatus.textContent = error instanceof TypeError
+			? "Не удалось связаться с сервисом. Проверьте подключение к интернету и попробуйте позже."
+			: `Не удалось отправить сообщение: ${error.message}`;
+		contactStatus.classList.add("is-error");
+	} finally {
+		isContactSending = false;
+		updateContactSubmitButton();
+	}
+});
+
+document.querySelector("[data-contact-open]").addEventListener("click", (event) => {
+	event.preventDefault();
+	closeSidePanel();
+	contactDialog.showModal();
+});
+document.querySelector("#contact-cancel").addEventListener("click", () => contactDialog.close());
+contactDialog.addEventListener("close", () => {
+	contactForm.reset();
+	contactStatus.textContent = "";
+	contactStatus.className = "contact-status";
+	for (const field of contactFields) {
+		field.removeAttribute("aria-invalid");
+		field.removeAttribute("aria-describedby");
+		document.getElementById(`${field.id}-error`)?.remove();
+	}
+});
+if (getContactCooldownSeconds() > 0) startContactCooldown();
 
 exportDataButton.addEventListener("click", () => {
 	const backup = {

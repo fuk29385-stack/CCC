@@ -767,6 +767,19 @@ main {
 	display: none;
 }
 
+.contact-status {
+	margin: 0;
+	font-size: 0.9rem;
+}
+
+.contact-status.is-success {
+	color: #24783b;
+}
+
+.contact-status.is-error {
+	color: #b42318;
+}
+
 .task-form > textarea {
 	min-height: 6rem;
 	resize: vertical;
@@ -829,6 +842,23 @@ main {
 	color: #102d1a;
 	background: var(--color-accent);
 	font-weight: 600;
+}
+
+.task-form footer #contact-submit.is-loading {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+}
+
+.task-form footer #contact-submit.is-loading::before {
+	width: 1rem;
+	height: 1rem;
+	border: 2px solid currentColor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	content: "";
+	animation: contact-loading 700ms linear infinite;
 }
 
 .task-form footer button[type="submit"]:disabled {
@@ -1151,6 +1181,10 @@ main {
 	to { opacity: 0; transform: translateX(0.5rem); }
 }
 
+@keyframes contact-loading {
+	to { transform: rotate(1turn); }
+}
+
 :root[data-theme="dark"] body,
 :root[data-theme="dark"] {
 	color: var(--color-text);
@@ -1309,8 +1343,13 @@ main {
 }
 
 :root[data-theme="dark"] .task-form .field-error,
-:root[data-theme="dark"] .form-message {
+:root[data-theme="dark"] .form-message,
+:root[data-theme="dark"] .contact-status.is-error {
 	color: #ffaaa2;
+}
+
+:root[data-theme="dark"] .contact-status.is-success {
+	color: #8be09a;
 }
 
 @media (max-width: 480px) {
