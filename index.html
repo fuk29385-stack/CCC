@@ -3,25 +3,71 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>College Control Center</title>
+  <meta name="description" content="College Control Center — удобный планировщик задач, предметов и расписания для студентов колледжа.">
+  <meta name="theme-color" content="#18352d">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:title" content="College Control Center">
+  <meta property="og:description" content="Задачи, предметы и расписание колледжа в одном месте.">
+  <meta property="og:url" content="https://fuk29385-stack.github.io/CCC/">
+  <meta property="og:image" content="https://fuk29385-stack.github.io/CCC/social-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="College Control Center — задачи и недельный календарь колледжа">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="College Control Center">
+  <meta name="twitter:description" content="Задачи, предметы и расписание колледжа в одном месте.">
+  <meta name="twitter:image" content="https://fuk29385-stack.github.io/CCC/social-preview.png">
+  <title>College Control Center — задачи и расписание</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("college-control-center.theme");
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = savedTheme || systemTheme;
+    } catch {
+      document.documentElement.dataset.theme = "light";
+    }
+  </script>
   <link rel="stylesheet" href="style.css">
   
 </head>
 <body>
   <header class="app-header">
-    <button class="icon-button" type="button" aria-label="Открыть меню">
+    <button class="icon-button" id="menu-open" type="button" aria-label="Открыть меню" aria-controls="side-panel" aria-expanded="false">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
         <path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
       </svg>
     </button>
     <h1>College Control Center</h1>
-    <button class="icon-button" type="button" aria-label="Профиль">
-      <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
-        <circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2" />
-        <path d="M4 21a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+    <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false" title="Переключить тему">
+      <svg class="theme-toggle__sun" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+        <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" />
+        <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+      </svg>
+      <svg class="theme-toggle__moon" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+        <path d="M20.5 14.2A8.7 8.7 0 0 1 9.8 3.5 8.8 8.8 0 1 0 20.5 14.2Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
       </svg>
     </button>
   </header>
+
+  <dialog class="side-panel" id="side-panel" aria-labelledby="side-panel-title">
+    <div class="side-panel__header">
+      <h2 id="side-panel-title">Навигация</h2>
+      <button class="icon-button side-panel__close" id="menu-close" type="button" aria-label="Закрыть меню">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
+          <path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />
+        </svg>
+      </button>
+    </div>
+    <nav class="side-panel__links" aria-label="Основная навигация">
+      <a href="#tasks-view" data-menu-page="tasks" data-menu-scroll="#tasks-title">Задачи</a>
+      <a href="#calendar-title" data-menu-page="tasks" data-menu-scroll="#calendar-title">Календарь</a>
+      <a href="#subjects-view" data-menu-page="subjects">Предметы</a>
+      <a href="#schedule-view" data-menu-page="schedule">Расписание</a>
+      <a href="https://github.com/fuk29385-stack/CCC/issues" target="_blank" rel="noopener noreferrer">Связаться с нами</a>
+    </nav>
+  </dialog>
 
   <nav class="app-navigation" aria-label="Разделы">
     <button type="button" data-view-button="tasks" aria-pressed="true">Задачи</button>
@@ -233,6 +279,8 @@
       </footer>
     </form>
   </dialog>
+
+  <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
 
 <script src="app.js" defer></script>
 </body>

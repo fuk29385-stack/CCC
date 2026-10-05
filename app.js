@@ -1,6 +1,7 @@
 const STORAGE_KEY = "college-control-center.tasks";
 const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
+const THEME_STORAGE_KEY = "college-control-center.theme";
 const SUBJECT_COLORS = ["#50bd66", "#4a90d9", "#df8750", "#9a70c5", "#d45b66", "#3a9c9a"];
 
 function createId() {
@@ -23,6 +24,50 @@ function saveStoredList(key, value) {
 	} catch (error) {
 		console.error(`Не удалось сохранить данные «${key}» в localStorage.`, error);
 	}
+}
+
+function applyTheme(theme, savePreference = false) {
+	const normalizedTheme = theme === "dark" ? "dark" : "light";
+	document.documentElement.dataset.theme = normalizedTheme;
+	themeToggle.setAttribute("aria-pressed", String(normalizedTheme === "dark"));
+	themeToggle.setAttribute("aria-label", `Включить ${normalizedTheme === "dark" ? "светлую" : "тёмную"} тему`);
+	themeColorMeta.content = normalizedTheme === "dark" ? "#101914" : "#18352d";
+
+	if (savePreference) {
+		try {
+			localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+		} catch (error) {
+			console.error("Не удалось сохранить тему.", error);
+		}
+	}
+}
+
+function getSavedTheme() {
+	try {
+		const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+		return savedTheme === "light" || savedTheme === "dark" ? savedTheme : null;
+	} catch (error) {
+		console.error("Не удалось прочитать выбранную тему.", error);
+		return null;
+	}
+}
+
+function showToast(message) {
+	const toast = document.createElement("div");
+	toast.className = "toast";
+	toast.setAttribute("role", "status");
+	const icon = document.createElement("span");
+	icon.className = "toast__icon";
+	icon.setAttribute("aria-hidden", "true");
+	icon.textContent = "✓";
+	const text = document.createElement("span");
+	text.textContent = message;
+	toast.append(icon, text);
+	toastRegion.append(toast);
+	window.setTimeout(() => {
+		toast.classList.add("is-leaving");
+		toast.addEventListener("animationend", () => toast.remove(), { once: true });
+	}, 2800);
 }
 
 class Task {
@@ -137,6 +182,19 @@ const scheduleForm = document.querySelector("#schedule-form");
 const scheduleFormTitle = document.querySelector("#schedule-dialog-title");
 const scheduleDialogCancel = document.querySelector("#schedule-cancel");
 const taskDialogCancel = document.querySelector("#task-cancel");
+const themeToggle = document.querySelector("#theme-toggle");
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+const menuOpenButton = document.querySelector("#menu-open");
+const menuCloseButton = document.querySelector("#menu-close");
+const sidePanel = document.querySelector("#side-panel");
+const toastRegion = document.querySelector("#toast-region");
+for (const dialog of document.querySelectorAll("dialog")) {
+	dialog.addEventListener("keydown", (event) => {
+		if (event.key !== "Escape") return;
+		event.preventDefault();
+		dialog.close();
+	});
+}
 
 function migrateSubjectNames() {
 	const knownNames = new Set(subjects.map((subject) => subject.name.toLocaleLowerCase("ru-RU")));
@@ -271,6 +329,44 @@ function switchPage(pageName) {
 	if (pageName === "schedule") renderSchedule();
 }
 
+function closeSidePanel() {
+	if (sidePanel.open) sidePanel.close();
+}
+
+const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
+applyTheme(getSavedTheme() ?? (systemThemeQuery.matches ? "dark" : "light"));
+themeToggle.addEventListener("click", () => {
+	const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+	applyTheme(nextTheme, true);
+});
+systemThemeQuery.addEventListener("change", (event) => {
+	if (!getSavedTheme()) applyTheme(event.matches ? "dark" : "light");
+});
+
+menuOpenButton.addEventListener("click", () => {
+	sidePanel.showModal();
+	menuOpenButton.setAttribute("aria-expanded", "true");
+});
+menuCloseButton.addEventListener("click", closeSidePanel);
+sidePanel.addEventListener("close", () => menuOpenButton.setAttribute("aria-expanded", "false"));
+sidePanel.addEventListener("click", (event) => {
+	if (event.target === sidePanel) closeSidePanel();
+});
+for (const link of sidePanel.querySelectorAll("a")) {
+	link.addEventListener("click", (event) => {
+		const pageName = link.dataset.menuPage;
+		if (pageName) {
+			event.preventDefault();
+			switchPage(pageName);
+		}
+		closeSidePanel();
+		const scrollTarget = link.dataset.menuScroll;
+		if (pageName && scrollTarget) {
+			window.setTimeout(() => document.querySelector(scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" }), 220);
+		}
+	});
+}
+
 function findSubject(name) {
 	return subjects.find((subject) => subject.name === name);
 }
@@ -386,6 +482,7 @@ function deleteSubject(subject) {
 	renderSubjectList();
 	renderTasks();
 	renderSchedule();
+	showToast(isUsed ? "Предмет удалён, связанные записи сохранены" : "Предмет удалён");
 }
 
 function saveSubjectFromForm(event) {
@@ -406,6 +503,7 @@ function saveSubjectFromForm(event) {
 	}
 
 	let subject = subjects.find((item) => item.id === editingSubjectId);
+	const isEditing = Boolean(subject);
 	if (subject) {
 		const previousName = subject.name;
 		subject.name = name;
@@ -434,6 +532,7 @@ function saveSubjectFromForm(event) {
 	renderCalendar();
 	renderTasks();
 	renderSchedule();
+	showToast(isEditing ? "Предмет обновлён" : "Предмет добавлен");
 }
 
 for (const button of pageViewButtons) {
@@ -471,14 +570,14 @@ function renderSchedule() {
 		for (const lesson of dayLessons) {
 			const item = document.createElement("li");
 			item.className = "schedule-lesson";
+			const subject = findSubject(lesson.subject);
+			if (subject) item.style.setProperty("--subject-color", subject.color);
 			const heading = document.createElement("div");
 			heading.className = "schedule-lesson__heading";
 			const time = document.createElement("time");
 			time.textContent = lesson.time;
-			const subject = findSubject(lesson.subject);
 			const name = document.createElement("strong");
 			name.textContent = lesson.subject;
-			if (subject) name.style.color = subject.color;
 			heading.append(time, name);
 			item.append(heading);
 
@@ -534,6 +633,7 @@ function deleteScheduleEntry(lesson) {
 	saveScheduleEntries();
 	renderSchedule();
 	renderSubjectList();
+	showToast("Пара удалена");
 }
 
 scheduleForm.addEventListener("submit", (event) => {
@@ -546,12 +646,14 @@ scheduleForm.addEventListener("submit", (event) => {
 		room: scheduleForm.elements.room.value.trim(),
 	};
 	const lesson = scheduleEntries.find((entry) => entry.id === editingScheduleId);
+	const isEditing = Boolean(lesson);
 	if (lesson) Object.assign(lesson, lessonData);
 	else scheduleEntries.push({ id: createId(), ...lessonData });
 	saveScheduleEntries();
 	scheduleDialog.close();
 	renderSchedule();
 	renderSubjectList();
+	showToast(isEditing ? "Пара обновлена" : "Пара добавлена в расписание");
 });
 
 scheduleDialogCancel.addEventListener("click", () => scheduleDialog.close());
@@ -564,6 +666,7 @@ scheduleDialog.addEventListener("close", () => {
 function createTaskElement(task) {
 	const item = document.createElement("li");
 	item.className = "task-item";
+	item.dataset.taskId = task.id;
 	if (task.isCompleted) item.classList.add("is-completed");
 	if (!task.isCompleted && task.date < getLocalDateString(new Date())) {
 		item.classList.add("is-overdue");
@@ -625,6 +728,7 @@ function createTaskElement(task) {
 			task.isCompleted = !task.isCompleted;
 			saveTasks();
 			renderTasks();
+			showToast(task.isCompleted ? "Задача выполнена" : "Задача возвращена в активные");
 		},
 	);
 	completeButton.setAttribute("aria-pressed", String(task.isCompleted));
@@ -632,13 +736,22 @@ function createTaskElement(task) {
 	actions.append(createTaskAction("Редактировать", "", () => openTaskDialog(task.id)));
 	actions.append(createTaskAction("Удалить", "task-item__action--delete", () => {
 		if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
-		const taskIndex = tasks.findIndex((itemTask) => itemTask.id === task.id);
-		if (taskIndex === -1) return;
-		tasks.splice(taskIndex, 1);
-		saveTasks();
-		renderCalendar();
-		renderTasks();
-		renderSubjectList();
+		const removeTask = () => {
+			const taskIndex = tasks.findIndex((itemTask) => itemTask.id === task.id);
+			if (taskIndex === -1) return;
+			tasks.splice(taskIndex, 1);
+			saveTasks();
+			renderCalendar();
+			renderTasks();
+			renderSubjectList();
+			showToast("Задача удалена");
+		};
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			removeTask();
+		} else {
+			item.classList.add("is-removing");
+			window.setTimeout(removeTask, 200);
+		}
 	}));
 
 	footer.append(badges, actions);
@@ -908,12 +1021,16 @@ taskForm.addEventListener("submit", (event) => {
 		isImportant: formData.get("important") === "on",
 	};
 
+	const isEditing = Boolean(editingTaskId);
+	let savedTaskId = editingTaskId;
 	if (editingTaskId) {
 		const existingTask = tasks.find((task) => task.id === editingTaskId);
 		if (!existingTask) return;
 		Object.assign(existingTask, taskData);
 	} else {
-		tasks.push(new Task(taskData));
+		const newTask = new Task(taskData);
+		tasks.push(newTask);
+		savedTaskId = newTask.id;
 	}
 
 	selectedDate = taskData.date;
@@ -924,6 +1041,11 @@ taskForm.addEventListener("submit", (event) => {
 	renderCalendar();
 	setTaskFilter("day");
 	renderSubjectList();
+	if (!isEditing) {
+		const newTaskElement = [...taskList.querySelectorAll(".task-item")].find((item) => item.dataset.taskId === savedTaskId);
+		newTaskElement?.classList.add("is-entering");
+	}
+	showToast(isEditing ? "Задача обновлена" : "Задача добавлена");
 });
 
 updateSubjectSelectors();
