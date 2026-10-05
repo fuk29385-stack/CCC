@@ -77,6 +77,15 @@ const taskDialog = document.querySelector(".task-dialog");
 const taskDialogTitle = document.querySelector("#task-dialog-title");
 const taskList = document.querySelector(".task-list");
 const tasksTitle = document.querySelector("#tasks-title");
+const taskSearchInput = document.querySelector("#task-search");
+const taskSubjectFilter = document.querySelector("#task-subject-filter");
+const taskFilterButtons = [...document.querySelectorAll("[data-task-filter]")];
+const taskStatistics = {
+	total: document.querySelector("#stats-total"),
+	completed: document.querySelector("#stats-completed"),
+	overdue: document.querySelector("#stats-overdue"),
+	deadline: document.querySelector("#stats-deadline"),
+};
 const addTaskButton = document.querySelector(".add-task-button");
 const cancelTaskButton = taskForm.querySelector('button[type="button"]');
 const saveTaskButton = taskForm.querySelector('button[type="submit"]');
@@ -85,6 +94,7 @@ const touchedFields = new Set();
 const initialDate = new Date();
 let selectedDate = getLocalDateString(initialDate);
 let displayedMonth = new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
+let activeTaskFilter = "all";
 let editingTaskId = null;
 
 function validateTaskField(field, showError) {
@@ -145,6 +155,12 @@ for (const field of taskFields) {
 		touchedFields.add(field);
 		updateTaskFormValidation();
 	});
+}
+
+taskSearchInput.addEventListener("input", renderTasks);
+taskSubjectFilter.addEventListener("change", renderTasks);
+for (const button of taskFilterButtons) {
+	button.addEventListener("click", () => setTaskFilter(button.dataset.taskFilter));
 }
 
 function createTaskElement(task) {
@@ -298,7 +314,7 @@ function renderCalendar() {
 			selectedDate = dateString;
 			displayedMonth = new Date(date.getFullYear(), date.getMonth(), 1);
 			renderCalendar();
-			renderTasks();
+			setTaskFilter("day");
 		});
 		calendarGrid.append(dayButton);
 	}
@@ -315,33 +331,128 @@ function changeMonth(offset) {
 	renderTasks();
 }
 
+function setTaskFilter(filter) {
+	activeTaskFilter = filter;
+	for (const button of taskFilterButtons) {
+		button.setAttribute("aria-pressed", String(button.dataset.taskFilter === filter));
+	}
+
+	if (filter === "today" || filter === "week") {
+		const today = new Date();
+		selectedDate = getLocalDateString(today);
+		displayedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+		renderCalendar();
+	}
+
+	renderTasks();
+}
+
+function updateTaskStatistics() {
+	const today = getLocalDateString(new Date());
+	const completedTasks = tasks.filter((task) => task.isCompleted);
+	const overdueTasks = tasks.filter((task) => !task.isCompleted && task.date < today);
+	const upcomingTasks = tasks
+		.filter((task) => !task.isCompleted && task.date >= today)
+		.sort((first, second) => first.date.localeCompare(second.date));
+
+	taskStatistics.total.textContent = String(tasks.length);
+	taskStatistics.completed.textContent = String(completedTasks.length);
+	taskStatistics.overdue.textContent = String(overdueTasks.length);
+	taskStatistics.deadline.textContent = upcomingTasks.length
+		? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(parseLocalDateString(upcomingTasks[0].date))
+		: "Нет";
+}
+
+function updateSubjectOptions() {
+	const selectedSubject = taskSubjectFilter.value;
+	const subjects = [...new Set(tasks.map((task) => task.subject.trim()).filter(Boolean))]
+		.sort((first, second) => first.localeCompare(second, "ru"));
+	taskSubjectFilter.replaceChildren(new Option("Все предметы", ""));
+
+	for (const subject of subjects) {
+		taskSubjectFilter.append(new Option(subject, subject));
+	}
+
+	if (subjects.includes(selectedSubject)) {
+		taskSubjectFilter.value = selectedSubject;
+	}
+}
+
 function renderTasks() {
 	taskList.replaceChildren();
-	const dayTasks = tasks.filter((task) => task.date === selectedDate);
+	updateTaskStatistics();
+	updateSubjectOptions();
+	const todayDate = new Date();
+	const today = getLocalDateString(todayDate);
+	const weekEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() + 6);
+	const weekEnd = getLocalDateString(weekEndDate);
+	const searchTerm = taskSearchInput.value.trim().toLocaleLowerCase("ru-RU");
+	const selectedSubject = taskSubjectFilter.value;
+	const visibleTasks = tasks.filter((task) => {
+		if (selectedSubject && task.subject.trim() !== selectedSubject) return false;
+		if (searchTerm && !`${task.title} ${task.description}`.toLocaleLowerCase("ru-RU").includes(searchTerm)) return false;
+
+		switch (activeTaskFilter) {
+			case "day": return task.date === selectedDate;
+			case "today": return task.date === today;
+			case "week": return task.date >= today && task.date <= weekEnd;
+			case "important": return task.isImportant;
+			case "completed": return task.isCompleted;
+			case "overdue": return !task.isCompleted && task.date < today;
+			default: return true;
+		}
+	});
 	const selectedDateLabel = new Intl.DateTimeFormat("ru-RU", {
 		day: "numeric",
 		month: "long",
 		year: "numeric",
 	}).format(parseLocalDateString(selectedDate));
-	tasksTitle.textContent = `Задачи на ${selectedDateLabel}`;
+	const headings = {
+		all: "Все задачи",
+		today: "Задачи на сегодня",
+		week: "Задачи на неделю",
+		important: "Важные задачи",
+		completed: "Выполненные задачи",
+		overdue: "Просроченные задачи",
+		day: `Задачи на ${selectedDateLabel}`,
+	};
+	tasksTitle.textContent = headings[activeTaskFilter];
 
-	if (dayTasks.length === 0) {
+	if (visibleTasks.length === 0) {
 		const emptyState = document.createElement("li");
 		emptyState.className = "empty-state";
 		const message = document.createElement("p");
-		message.textContent = "На этот день задач пока нет. Добавьте задачу, чтобы ничего не забыть.";
-		const emptyAddButton = document.createElement("button");
-		emptyAddButton.type = "button";
-		emptyAddButton.className = "empty-state__button";
-		emptyAddButton.textContent = "Добавить задачу";
-		emptyAddButton.addEventListener("click", () => openTaskDialog());
-		emptyState.append(message, emptyAddButton);
+		message.textContent = tasks.length
+			? "По выбранным условиям задач нет."
+			: "Задач пока нет. Добавьте первую, чтобы ничего не забыть.";
+		emptyState.append(message);
+
+		if (tasks.length === 0) {
+			const emptyAddButton = document.createElement("button");
+			emptyAddButton.type = "button";
+			emptyAddButton.className = "empty-state__button";
+			emptyAddButton.textContent = "Добавить задачу";
+			emptyAddButton.addEventListener("click", () => openTaskDialog());
+			emptyState.append(emptyAddButton);
+		} else {
+			const resetButton = document.createElement("button");
+			resetButton.type = "button";
+			resetButton.className = "empty-state__button";
+			resetButton.textContent = "Сбросить фильтры";
+			resetButton.addEventListener("click", () => {
+				taskSearchInput.value = "";
+				taskSubjectFilter.value = "";
+				setTaskFilter("all");
+			});
+			emptyState.append(resetButton);
+		}
+
 		taskList.append(emptyState);
 		return;
 	}
 
 	// Сначала показываем активные задачи, затем выполненные.
-	const sortedTasks = [...dayTasks].sort((first, second) => Number(first.isCompleted) - Number(second.isCompleted));
+	const sortedTasks = [...visibleTasks].sort((first, second) => Number(first.isCompleted) - Number(second.isCompleted) || first.date.localeCompare(second.date));
 	const taskElements = sortedTasks.map(createTaskElement);
 	taskList.append(...taskElements);
 }
@@ -375,7 +486,7 @@ todayButton.addEventListener("click", () => {
 	selectedDate = getLocalDateString(today);
 	displayedMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 	renderCalendar();
-	renderTasks();
+	setTaskFilter("day");
 });
 
 cancelTaskButton.addEventListener("click", () => {
@@ -421,7 +532,7 @@ taskForm.addEventListener("submit", (event) => {
 	saveTasks();
 	taskDialog.close();
 	renderCalendar();
-	renderTasks();
+	setTaskFilter("day");
 });
 
 updateTaskFormValidation();

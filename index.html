@@ -58,6 +58,47 @@
 
     <section class="tasks" aria-labelledby="tasks-title">
       <h2 id="tasks-title">Мои задачи</h2>
+      <div class="task-dashboard">
+        <dl class="task-statistics" aria-label="Статистика задач">
+          <div class="task-statistic">
+            <dt>Всего</dt>
+            <dd id="stats-total">0</dd>
+          </div>
+          <div class="task-statistic">
+            <dt>Выполнено</dt>
+            <dd id="stats-completed">0</dd>
+          </div>
+          <div class="task-statistic">
+            <dt>Просрочено</dt>
+            <dd id="stats-overdue">0</dd>
+          </div>
+          <div class="task-statistic task-statistic--deadline">
+            <dt>Ближайший дедлайн</dt>
+            <dd id="stats-deadline">Нет</dd>
+          </div>
+        </dl>
+
+        <div class="task-filters">
+          <label class="task-search" for="task-search">
+            <span>Поиск</span>
+            <input id="task-search" type="search" placeholder="По названию и описанию">
+          </label>
+          <div class="task-filter-buttons" role="group" aria-label="Фильтры задач">
+            <button type="button" data-task-filter="all" aria-pressed="true">Все</button>
+            <button type="button" data-task-filter="today" aria-pressed="false">Сегодня</button>
+            <button type="button" data-task-filter="week" aria-pressed="false">На неделю</button>
+            <button type="button" data-task-filter="important" aria-pressed="false">Важные</button>
+            <button type="button" data-task-filter="completed" aria-pressed="false">Выполненные</button>
+            <button type="button" data-task-filter="overdue" aria-pressed="false">Просроченные</button>
+          </div>
+          <label class="task-subject" for="task-subject-filter">
+            <span>Предмет</span>
+            <select id="task-subject-filter">
+              <option value="">Все предметы</option>
+            </select>
+          </label>
+        </div>
+      </div>
       <ul class="task-list" aria-live="polite"></ul>
     </section>
   </main>
