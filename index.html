@@ -23,7 +23,14 @@
     </button>
   </header>
 
+  <nav class="app-navigation" aria-label="Разделы">
+    <button type="button" data-view-button="tasks" aria-pressed="true">Задачи</button>
+    <button type="button" data-view-button="subjects" aria-pressed="false">Предметы</button>
+    <button type="button" data-view-button="schedule" aria-pressed="false">Расписание</button>
+  </nav>
+
   <main>
+    <section class="page-view page-view--tasks" id="tasks-view" data-page-view="tasks">
     <section class="calendar" aria-labelledby="calendar-title">
       <div class="calendar__heading">
         <h2 id="calendar-title">Календарь</h2>
@@ -101,6 +108,45 @@
       </div>
       <ul class="task-list" aria-live="polite"></ul>
     </section>
+    </section>
+
+    <section class="page-view" id="subjects-view" data-page-view="subjects" hidden aria-labelledby="subjects-title">
+      <div class="page-view__header">
+        <h2 id="subjects-title">Предметы</h2>
+        <button class="primary-button" id="subject-add" type="button">Добавить предмет</button>
+      </div>
+      <ul class="subject-list" id="subject-list"></ul>
+    </section>
+
+    <section class="page-view" id="schedule-view" data-page-view="schedule" hidden aria-labelledby="schedule-title">
+      <div class="page-view__header">
+        <h2 id="schedule-title">Расписание</h2>
+      </div>
+      <div class="schedule-scroll" tabindex="0" aria-label="Недельное расписание, прокручиваемая таблица">
+        <table class="schedule-table">
+          <thead>
+            <tr>
+              <th scope="col">Понедельник</th>
+              <th scope="col">Вторник</th>
+              <th scope="col">Среда</th>
+              <th scope="col">Четверг</th>
+              <th scope="col">Пятница</th>
+              <th scope="col">Суббота</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-schedule-day="1"></td>
+              <td data-schedule-day="2"></td>
+              <td data-schedule-day="3"></td>
+              <td data-schedule-day="4"></td>
+              <td data-schedule-day="5"></td>
+              <td data-schedule-day="6"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <button class="add-task-button" type="button" aria-label="Добавить задачу" aria-haspopup="dialog">
@@ -120,7 +166,10 @@
       <input id="task-date" name="date" type="date" required>
 
       <label for="task-subject">Предмет</label>
-      <input id="task-subject" name="subject" type="text" required>
+      <select id="task-subject" name="subject" required>
+        <option value="">Выберите предмет</option>
+      </select>
+      <button class="task-inline-button" id="task-add-subject" type="button">+ Добавить предмет</button>
 
       <label for="task-description">Описание</label>
       <textarea id="task-description" name="description" rows="4"></textarea>
@@ -132,7 +181,55 @@
 
       <footer>
         <button type="submit" disabled>Сохранить</button>
-        <button type="button">Отменить</button>
+        <button id="task-cancel" type="button">Отменить</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="subject-dialog" aria-labelledby="subject-dialog-title">
+    <form class="task-form" id="subject-form" novalidate>
+      <header>
+        <h2 id="subject-dialog-title">Новый предмет</h2>
+      </header>
+      <input id="subject-id" name="id" type="hidden">
+      <label for="subject-name">Название</label>
+      <input id="subject-name" name="name" type="text" required maxlength="60">
+      <label for="subject-color">Цвет</label>
+      <input id="subject-color" name="color" type="color" value="#50bd66" required>
+      <p class="form-message" id="subject-form-message" aria-live="polite"></p>
+      <footer>
+        <button type="submit">Сохранить</button>
+        <button id="subject-cancel" type="button">Отменить</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="schedule-dialog" aria-labelledby="schedule-dialog-title">
+    <form class="task-form" id="schedule-form" novalidate>
+      <header>
+        <h2 id="schedule-dialog-title">Новая пара</h2>
+      </header>
+      <input id="schedule-id" name="id" type="hidden">
+      <label for="schedule-day">День недели</label>
+      <select id="schedule-day" name="day" required>
+        <option value="1">Понедельник</option>
+        <option value="2">Вторник</option>
+        <option value="3">Среда</option>
+        <option value="4">Четверг</option>
+        <option value="5">Пятница</option>
+        <option value="6">Суббота</option>
+      </select>
+      <label for="schedule-time">Время</label>
+      <input id="schedule-time" name="time" type="time" required>
+      <label for="schedule-subject">Предмет</label>
+      <select id="schedule-subject" name="subject" required>
+        <option value="">Выберите предмет</option>
+      </select>
+      <label for="schedule-room">Аудитория</label>
+      <input id="schedule-room" name="room" type="text" maxlength="40">
+      <footer>
+        <button type="submit">Сохранить</button>
+        <button id="schedule-cancel" type="button">Отменить</button>
       </footer>
     </form>
   </dialog>

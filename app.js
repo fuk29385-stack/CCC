@@ -1,4 +1,29 @@
 const STORAGE_KEY = "college-control-center.tasks";
+const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
+const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
+const SUBJECT_COLORS = ["#50bd66", "#4a90d9", "#df8750", "#9a70c5", "#d45b66", "#3a9c9a"];
+
+function createId() {
+	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function loadStoredList(key) {
+	try {
+		const value = JSON.parse(localStorage.getItem(key) ?? "[]");
+		return Array.isArray(value) ? value : [];
+	} catch (error) {
+		console.error(`Не удалось загрузить данные «${key}» из localStorage.`, error);
+		return [];
+	}
+}
+
+function saveStoredList(key, value) {
+	try {
+		localStorage.setItem(key, JSON.stringify(value));
+	} catch (error) {
+		console.error(`Не удалось сохранить данные «${key}» в localStorage.`, error);
+	}
+}
 
 class Task {
 	constructor({
@@ -47,11 +72,38 @@ function loadTasks() {
 }
 
 function saveTasks() {
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-	} catch (error) {
-		console.error("Не удалось сохранить задачи в localStorage.", error);
-	}
+	saveStoredList(STORAGE_KEY, tasks);
+}
+
+function loadSubjects() {
+	return loadStoredList(SUBJECT_STORAGE_KEY)
+		.filter((subject) => subject && typeof subject === "object" && typeof subject.name === "string")
+		.map((subject, index) => {
+			const color = /^#[0-9a-f]{6}$/i.test(subject.color) ? subject.color : SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+			return { id: typeof subject.id === "string" ? subject.id : createId(), name: subject.name.trim(), color };
+		})
+		.filter((subject) => subject.name);
+}
+
+function loadScheduleEntries() {
+	return loadStoredList(SCHEDULE_STORAGE_KEY)
+		.filter((entry) => entry && typeof entry === "object")
+		.map((entry) => ({
+			id: typeof entry.id === "string" ? entry.id : createId(),
+			day: Number(entry.day),
+			time: typeof entry.time === "string" ? entry.time : "",
+			subject: typeof entry.subject === "string" ? entry.subject : "",
+			room: typeof entry.room === "string" ? entry.room : "",
+		}))
+		.filter((entry) => entry.day >= 1 && entry.day <= 6 && entry.time);
+}
+
+function saveSubjects() {
+	saveStoredList(SUBJECT_STORAGE_KEY, subjects);
+}
+
+function saveScheduleEntries() {
+	saveStoredList(SCHEDULE_STORAGE_KEY, scheduleEntries);
 }
 
 function getLocalDateString(date) {
@@ -67,6 +119,48 @@ function parseLocalDateString(dateString) {
 }
 
 const tasks = loadTasks();
+const subjects = loadSubjects();
+const scheduleEntries = loadScheduleEntries();
+const pageViewButtons = [...document.querySelectorAll("[data-view-button]")];
+const pageViews = [...document.querySelectorAll("[data-page-view]")];
+const subjectList = document.querySelector("#subject-list");
+const subjectAddButton = document.querySelector("#subject-add");
+const subjectDialog = document.querySelector("#subject-dialog");
+const subjectForm = document.querySelector("#subject-form");
+const subjectFormTitle = document.querySelector("#subject-dialog-title");
+const subjectFormMessage = document.querySelector("#subject-form-message");
+const subjectDialogCancel = document.querySelector("#subject-cancel");
+const taskAddSubjectButton = document.querySelector("#task-add-subject");
+const scheduleGrid = document.querySelector(".schedule-table");
+const scheduleDialog = document.querySelector("#schedule-dialog");
+const scheduleForm = document.querySelector("#schedule-form");
+const scheduleFormTitle = document.querySelector("#schedule-dialog-title");
+const scheduleDialogCancel = document.querySelector("#schedule-cancel");
+const taskDialogCancel = document.querySelector("#task-cancel");
+
+function migrateSubjectNames() {
+	const knownNames = new Set(subjects.map((subject) => subject.name.toLocaleLowerCase("ru-RU")));
+	const legacyNames = [...tasks, ...scheduleEntries]
+		.map((item) => item.subject.trim())
+		.filter((name) => name && !knownNames.has(name.toLocaleLowerCase("ru-RU")));
+	let addedCount = 0;
+
+	for (const name of legacyNames) {
+		const normalizedName = name.toLocaleLowerCase("ru-RU");
+		if (knownNames.has(normalizedName)) continue;
+		subjects.push({
+			id: createId(),
+			name,
+			color: SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length],
+		});
+		knownNames.add(normalizedName);
+		addedCount += 1;
+	}
+
+	if (addedCount) saveSubjects();
+}
+
+migrateSubjectNames();
 const calendarGrid = document.querySelector("#calendar-grid");
 const calendarMonth = document.querySelector("#calendar-month");
 const previousMonthButton = document.querySelector("#calendar-previous");
@@ -79,6 +173,8 @@ const taskList = document.querySelector(".task-list");
 const tasksTitle = document.querySelector("#tasks-title");
 const taskSearchInput = document.querySelector("#task-search");
 const taskSubjectFilter = document.querySelector("#task-subject-filter");
+const taskSubjectSelect = document.querySelector("#task-subject");
+const scheduleSubjectSelect = document.querySelector("#schedule-subject");
 const taskFilterButtons = [...document.querySelectorAll("[data-task-filter]")];
 const taskStatistics = {
 	total: document.querySelector("#stats-total"),
@@ -87,7 +183,6 @@ const taskStatistics = {
 	deadline: document.querySelector("#stats-deadline"),
 };
 const addTaskButton = document.querySelector(".add-task-button");
-const cancelTaskButton = taskForm.querySelector('button[type="button"]');
 const saveTaskButton = taskForm.querySelector('button[type="submit"]');
 const taskFields = ["title", "date", "subject"].map((name) => taskForm.elements.namedItem(name));
 const touchedFields = new Set();
@@ -96,6 +191,9 @@ let selectedDate = getLocalDateString(initialDate);
 let displayedMonth = new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
 let activeTaskFilter = "all";
 let editingTaskId = null;
+let editingSubjectId = null;
+let editingScheduleId = null;
+let returnToTaskAfterSubjectSave = false;
 
 function validateTaskField(field, showError) {
 	const value = field.value.trim();
@@ -163,6 +261,306 @@ for (const button of taskFilterButtons) {
 	button.addEventListener("click", () => setTaskFilter(button.dataset.taskFilter));
 }
 
+function switchPage(pageName) {
+	for (const page of pageViews) page.hidden = page.dataset.pageView !== pageName;
+	for (const button of pageViewButtons) {
+		button.setAttribute("aria-pressed", String(button.dataset.viewButton === pageName));
+	}
+	addTaskButton.hidden = pageName !== "tasks";
+	if (pageName === "subjects") renderSubjectList();
+	if (pageName === "schedule") renderSchedule();
+}
+
+function findSubject(name) {
+	return subjects.find((subject) => subject.name === name);
+}
+
+function updateSubjectSelect(select, selectedName = select.value, placeholder = "Выберите предмет") {
+	select.replaceChildren(new Option(placeholder, ""));
+	for (const subject of subjects) {
+		const option = new Option(subject.name, subject.name);
+		option.style.setProperty("--subject-color", subject.color);
+		select.append(option);
+	}
+	if (subjects.some((subject) => subject.name === selectedName)) select.value = selectedName;
+}
+
+function updateSubjectSelectors() {
+	const selectedFilterSubject = taskSubjectFilter.value;
+	const taskSubject = taskSubjectSelect.value;
+	const scheduleSubject = scheduleSubjectSelect.value;
+	updateSubjectSelect(taskSubjectFilter, selectedFilterSubject, "Все предметы");
+	updateSubjectSelect(taskSubjectSelect, taskSubject);
+	updateSubjectSelect(scheduleSubjectSelect, scheduleSubject);
+}
+
+function createSubjectColorMark(subject) {
+	const mark = document.createElement("span");
+	mark.className = "subject-color-mark";
+	mark.style.setProperty("--subject-color", subject.color);
+	mark.setAttribute("aria-hidden", "true");
+	return mark;
+}
+
+function renderSubjectList() {
+	subjectList.replaceChildren();
+	if (subjects.length === 0) {
+		const empty = document.createElement("li");
+		empty.className = "empty-state";
+		empty.textContent = "Предметов пока нет. Добавьте первый, чтобы использовать его в задачах и расписании.";
+		subjectList.append(empty);
+		return;
+	}
+
+	for (const subject of subjects) {
+		const item = document.createElement("li");
+		item.className = "subject-item";
+		const details = document.createElement("div");
+		details.className = "subject-item__details";
+		details.append(createSubjectColorMark(subject));
+
+		const name = document.createElement("strong");
+		name.textContent = subject.name;
+		details.append(name);
+
+		const references = tasks.filter((task) => task.subject === subject.name).length
+			+ scheduleEntries.filter((entry) => entry.subject === subject.name).length;
+		const usage = document.createElement("span");
+		usage.className = "subject-item__usage";
+		usage.textContent = references ? `Используется: ${references}` : "Не используется";
+		details.append(usage);
+
+		const actions = document.createElement("div");
+		actions.className = "subject-item__actions";
+		actions.append(createTaskAction("Переименовать", "", () => openSubjectDialog(subject.id)));
+		actions.append(createTaskAction("Удалить", "task-item__action--delete", () => deleteSubject(subject)));
+		item.append(details, actions);
+		subjectList.append(item);
+	}
+}
+
+function openSubjectDialog(subjectId = null, fromTask = false) {
+	subjectForm.reset();
+	subjectFormMessage.textContent = "";
+	editingSubjectId = subjectId;
+	returnToTaskAfterSubjectSave = fromTask;
+	const subject = subjects.find((item) => item.id === subjectId);
+	subjectFormTitle.textContent = subject ? "Переименовать предмет" : "Новый предмет";
+	subjectForm.elements.id.value = subject?.id ?? "";
+	subjectForm.elements.name.value = subject?.name ?? "";
+	subjectForm.elements.color.value = subject?.color ?? SUBJECT_COLORS[subjects.length % SUBJECT_COLORS.length];
+	subjectDialog.showModal();
+}
+
+function deleteSubject(subject) {
+	const affectedTasks = tasks.filter((task) => task.subject === subject.name);
+	const affectedLessons = scheduleEntries.filter((entry) => entry.subject === subject.name);
+	const isUsed = affectedTasks.length + affectedLessons.length > 0;
+	if (subject.name === "Без предмета" && isUsed) {
+		window.alert("Сначала назначьте этим задачам и парам другие предметы.");
+		return;
+	}
+	const fallbackName = "Без предмета";
+	const confirmation = isUsed
+		? `Удалить предмет «${subject.name}»? ${affectedTasks.length + affectedLessons.length} связанных задач и пар будут переназначены на «${fallbackName}».`
+		: `Удалить предмет «${subject.name}»?`;
+	if (!window.confirm(confirmation)) return;
+
+	if (isUsed) {
+		let fallbackSubject = subjects.find((item) => item.name === fallbackName && item.id !== subject.id);
+		if (!fallbackSubject) {
+			fallbackSubject = { id: createId(), name: fallbackName, color: "#71827a" };
+			subjects.push(fallbackSubject);
+		}
+		for (const task of affectedTasks) task.subject = fallbackName;
+		for (const lesson of affectedLessons) lesson.subject = fallbackName;
+		saveTasks();
+		saveScheduleEntries();
+	}
+
+	const index = subjects.findIndex((item) => item.id === subject.id);
+	if (index === -1) return;
+	subjects.splice(index, 1);
+	saveSubjects();
+	updateSubjectSelectors();
+	renderSubjectList();
+	renderTasks();
+	renderSchedule();
+}
+
+function saveSubjectFromForm(event) {
+	event.preventDefault();
+	const name = subjectForm.elements.name.value.trim();
+	const color = subjectForm.elements.color.value;
+	if (!name) {
+		subjectForm.elements.name.focus();
+		return;
+	}
+	const normalizedName = name.toLocaleLowerCase("ru-RU");
+	const duplicate = subjects.find((subject) => subject.id !== editingSubjectId
+		&& subject.name.toLocaleLowerCase("ru-RU") === normalizedName);
+	if (duplicate) {
+		subjectFormMessage.textContent = "Предмет с таким названием уже есть.";
+		subjectForm.elements.name.focus();
+		return;
+	}
+
+	let subject = subjects.find((item) => item.id === editingSubjectId);
+	if (subject) {
+		const previousName = subject.name;
+		subject.name = name;
+		subject.color = color;
+		for (const task of tasks) {
+			if (task.subject === previousName) task.subject = name;
+		}
+		for (const entry of scheduleEntries) {
+			if (entry.subject === previousName) entry.subject = name;
+		}
+		saveTasks();
+		saveScheduleEntries();
+	} else {
+		subject = { id: createId(), name, color };
+		subjects.push(subject);
+	}
+
+	saveSubjects();
+	updateSubjectSelectors();
+	if (returnToTaskAfterSubjectSave && taskDialog.open) {
+		taskSubjectSelect.value = subject.name;
+		updateTaskFormValidation();
+	}
+	subjectDialog.close();
+	renderSubjectList();
+	renderCalendar();
+	renderTasks();
+	renderSchedule();
+}
+
+for (const button of pageViewButtons) {
+	button.addEventListener("click", () => switchPage(button.dataset.viewButton));
+}
+subjectAddButton.addEventListener("click", () => openSubjectDialog());
+taskAddSubjectButton.addEventListener("click", () => openSubjectDialog(null, true));
+subjectForm.addEventListener("submit", saveSubjectFromForm);
+subjectDialogCancel.addEventListener("click", () => subjectDialog.close());
+subjectDialog.addEventListener("close", () => {
+	subjectForm.reset();
+	subjectFormMessage.textContent = "";
+	editingSubjectId = null;
+	returnToTaskAfterSubjectSave = false;
+});
+taskSubjectSelect.addEventListener("change", updateTaskFormValidation);
+
+function renderSchedule() {
+	for (const cell of scheduleGrid.querySelectorAll("[data-schedule-day]")) {
+		const day = Number(cell.dataset.scheduleDay);
+		cell.replaceChildren();
+		const dayLessons = scheduleEntries
+			.filter((entry) => entry.day === day)
+			.sort((first, second) => first.time.localeCompare(second.time));
+
+		if (dayLessons.length === 0) {
+			const empty = document.createElement("p");
+			empty.className = "schedule-day__empty";
+		empty.textContent = "Пар пока нет";
+		cell.append(empty);
+		}
+
+		const lessonList = document.createElement("ul");
+		lessonList.className = "schedule-day__lessons";
+		for (const lesson of dayLessons) {
+			const item = document.createElement("li");
+			item.className = "schedule-lesson";
+			const heading = document.createElement("div");
+			heading.className = "schedule-lesson__heading";
+			const time = document.createElement("time");
+			time.textContent = lesson.time;
+			const subject = findSubject(lesson.subject);
+			const name = document.createElement("strong");
+			name.textContent = lesson.subject;
+			if (subject) name.style.color = subject.color;
+			heading.append(time, name);
+			item.append(heading);
+
+			if (lesson.room) {
+				const room = document.createElement("span");
+				room.className = "schedule-lesson__room";
+				room.textContent = `Ауд. ${lesson.room}`;
+				item.append(room);
+			}
+
+			const actions = document.createElement("div");
+			actions.className = "schedule-lesson__actions";
+			actions.append(createTaskAction("Изменить", "", () => openScheduleDialog(lesson.id)));
+			actions.append(createTaskAction("Удалить", "task-item__action--delete", () => deleteScheduleEntry(lesson)));
+			item.append(actions);
+			lessonList.append(item);
+		}
+		if (dayLessons.length) cell.append(lessonList);
+
+		const addButton = document.createElement("button");
+		addButton.type = "button";
+		addButton.className = "schedule-day__add";
+		addButton.textContent = "+ Добавить пару";
+		addButton.addEventListener("click", () => openScheduleDialog(null, day));
+		cell.append(addButton);
+	}
+}
+
+function openScheduleDialog(scheduleId = null, day = 1) {
+	if (subjects.length === 0) {
+		window.alert("Сначала добавьте предмет.");
+		switchPage("subjects");
+		return;
+	}
+	scheduleForm.reset();
+	updateSubjectSelect(scheduleSubjectSelect, "");
+	editingScheduleId = scheduleId;
+	const lesson = scheduleEntries.find((entry) => entry.id === scheduleId);
+	scheduleFormTitle.textContent = lesson ? "Редактировать пару" : "Новая пара";
+	scheduleForm.elements.id.value = lesson?.id ?? "";
+	scheduleForm.elements.day.value = String(lesson?.day ?? day);
+	scheduleForm.elements.time.value = lesson?.time ?? "";
+	scheduleForm.elements.subject.value = lesson?.subject ?? "";
+	scheduleForm.elements.room.value = lesson?.room ?? "";
+	scheduleDialog.showModal();
+}
+
+function deleteScheduleEntry(lesson) {
+	if (!window.confirm(`Удалить пару «${lesson.subject}» в ${lesson.time}?`)) return;
+	const index = scheduleEntries.findIndex((entry) => entry.id === lesson.id);
+	if (index === -1) return;
+	scheduleEntries.splice(index, 1);
+	saveScheduleEntries();
+	renderSchedule();
+	renderSubjectList();
+}
+
+scheduleForm.addEventListener("submit", (event) => {
+	event.preventDefault();
+	if (!scheduleForm.reportValidity()) return;
+	const lessonData = {
+		day: Number(scheduleForm.elements.day.value),
+		time: scheduleForm.elements.time.value,
+		subject: scheduleForm.elements.subject.value,
+		room: scheduleForm.elements.room.value.trim(),
+	};
+	const lesson = scheduleEntries.find((entry) => entry.id === editingScheduleId);
+	if (lesson) Object.assign(lesson, lessonData);
+	else scheduleEntries.push({ id: createId(), ...lessonData });
+	saveScheduleEntries();
+	scheduleDialog.close();
+	renderSchedule();
+	renderSubjectList();
+});
+
+scheduleDialogCancel.addEventListener("click", () => scheduleDialog.close());
+scheduleDialog.addEventListener("close", () => {
+	scheduleForm.reset();
+	editingScheduleId = null;
+	scheduleFormTitle.textContent = "Новая пара";
+});
+
 function createTaskElement(task) {
 	const item = document.createElement("li");
 	item.className = "task-item";
@@ -180,9 +578,15 @@ function createTaskElement(task) {
 
 	const meta = document.createElement("p");
 	meta.className = "task-item__meta";
-	meta.textContent = `${task.subject} · ${task.date}`;
+	meta.textContent = task.date;
 
-	content.append(title, meta);
+	const subject = findSubject(task.subject);
+	const subjectLabel = document.createElement("span");
+	subjectLabel.className = "task-item__subject";
+	if (subject) subjectLabel.style.setProperty("--subject-color", subject.color);
+	subjectLabel.textContent = task.subject || "Без предмета";
+
+	content.append(title, subjectLabel, meta);
 
 	if (task.description) {
 		const description = document.createElement("p");
@@ -234,6 +638,7 @@ function createTaskElement(task) {
 		saveTasks();
 		renderCalendar();
 		renderTasks();
+		renderSubjectList();
 	}));
 
 	footer.append(badges, actions);
@@ -363,25 +768,10 @@ function updateTaskStatistics() {
 		: "Нет";
 }
 
-function updateSubjectOptions() {
-	const selectedSubject = taskSubjectFilter.value;
-	const subjects = [...new Set(tasks.map((task) => task.subject.trim()).filter(Boolean))]
-		.sort((first, second) => first.localeCompare(second, "ru"));
-	taskSubjectFilter.replaceChildren(new Option("Все предметы", ""));
-
-	for (const subject of subjects) {
-		taskSubjectFilter.append(new Option(subject, subject));
-	}
-
-	if (subjects.includes(selectedSubject)) {
-		taskSubjectFilter.value = selectedSubject;
-	}
-}
-
 function renderTasks() {
 	taskList.replaceChildren();
 	updateTaskStatistics();
-	updateSubjectOptions();
+	updateSubjectSelectors();
 	const todayDate = new Date();
 	const today = getLocalDateString(todayDate);
 	const weekEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() + 6);
@@ -489,7 +879,7 @@ todayButton.addEventListener("click", () => {
 	setTaskFilter("day");
 });
 
-cancelTaskButton.addEventListener("click", () => {
+taskDialogCancel.addEventListener("click", () => {
 	taskDialog.close();
 });
 
@@ -533,8 +923,12 @@ taskForm.addEventListener("submit", (event) => {
 	taskDialog.close();
 	renderCalendar();
 	setTaskFilter("day");
+	renderSubjectList();
 });
 
+updateSubjectSelectors();
 updateTaskFormValidation();
+renderSubjectList();
+renderSchedule();
 renderCalendar();
 renderTasks();
