@@ -1,0 +1,357 @@
+:root {
+	color-scheme: light;
+	font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+	color: #18352d;
+	background: #f3f7f2;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	--color-ink: #18352d;
+	--color-muted: #71827a;
+	--color-line: #dce6dc;
+	--color-surface: #ffffff;
+	--color-accent: #50bd66;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	min-width: 320px;
+	min-height: 100vh;
+	min-height: 100dvh;
+	margin: 0;
+}
+
+button,
+input,
+textarea {
+	font: inherit;
+}
+
+button {
+	color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+	outline: 3px solid #9adc83;
+	outline-offset: 3px;
+}
+
+.app-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	min-height: 76px;
+	padding: 0 max(1.25rem, calc((100vw - 960px) / 2));
+	color: #f5fff4;
+	background: var(--color-ink);
+}
+
+.app-header h1 {
+	margin: 0;
+	font-size: 1.2rem;
+	font-weight: 600;
+}
+
+.icon-button {
+	display: grid;
+	flex: 0 0 2.75rem;
+	width: 2.75rem;
+	height: 2.75rem;
+	place-items: center;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	color: inherit;
+	background: transparent;
+	cursor: pointer;
+}
+
+.icon-button:hover {
+	background: rgb(255 255 255 / 12%);
+}
+
+main {
+	display: flex;
+	flex: 1;
+	flex-direction: column;
+	gap: 2.5rem;
+	width: min(100% - 2.5rem, 960px);
+	margin-inline: auto;
+	padding-block: 2rem 6rem;
+}
+
+.calendar h2,
+.tasks h2 {
+	margin: 0 0 1.25rem;
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.weekdays {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	border-block: 1px solid var(--color-line);
+}
+
+.weekdays li {
+	display: grid;
+	min-height: 3.5rem;
+	place-items: center;
+	color: var(--color-muted);
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.weekdays li + li {
+	border-inline-start: 1px solid var(--color-line);
+}
+
+.task-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+	min-height: 38vh;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.task-list .empty-state {
+	display: grid;
+	flex: 1;
+	min-height: 38vh;
+	margin: 0;
+	place-items: center;
+	color: #819188;
+	font-size: 2rem;
+	font-weight: 500;
+	text-align: center;
+}
+
+.task-item {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 1rem 1.1rem;
+	border: 1px solid var(--color-line);
+	border-radius: 6px;
+	background: var(--color-surface);
+}
+
+.task-item__content {
+	min-width: 0;
+}
+
+.task-item__title {
+	margin: 0;
+	font-size: 1rem;
+}
+
+.task-item__meta,
+.task-item__description {
+	margin: 0.35rem 0 0;
+	color: var(--color-muted);
+	font-size: 0.9rem;
+	overflow-wrap: anywhere;
+}
+
+.task-item__importance {
+	flex: 0 0 auto;
+	padding: 0.25rem 0.5rem;
+	border-radius: 4px;
+	color: #714a13;
+	background: #fff0ca;
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.task-item.is-completed .task-item__title {
+	color: var(--color-muted);
+	text-decoration: line-through;
+}
+
+.add-task-button {
+	position: fixed;
+	right: max(1.5rem, calc((100vw - 960px) / 2));
+	bottom: max(1.5rem, env(safe-area-inset-bottom));
+	display: grid;
+	width: 3.75rem;
+	aspect-ratio: 1;
+	place-items: center;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	color: #102d1a;
+	background: var(--color-accent);
+	box-shadow: 0 8px 22px rgb(24 53 45 / 22%);
+	cursor: pointer;
+	transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.add-task-button span {
+	font-size: 2rem;
+	font-weight: 400;
+	line-height: 1;
+}
+
+.add-task-button:hover {
+	transform: translateY(-3px);
+	background: #65ce78;
+}
+
+.task-dialog {
+	width: min(30rem, calc(100vw - 2rem));
+	max-width: none;
+	max-height: calc(100dvh - 2rem);
+	padding: 0;
+	overflow: auto;
+	border: 1px solid var(--color-line);
+	border-radius: 8px;
+	color: var(--color-ink);
+	background: var(--color-surface);
+	box-shadow: 0 24px 80px rgb(15 37 29 / 24%);
+}
+
+.task-dialog::backdrop {
+	background: rgb(15 37 29 / 58%);
+	backdrop-filter: blur(3px);
+}
+
+.task-form {
+	display: grid;
+	gap: 0.75rem;
+	padding: 1.5rem;
+}
+
+.task-form > header h2 {
+	margin: 0 0 0.5rem;
+	font-size: 1.4rem;
+}
+
+.task-form > label {
+	color: #465d53;
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.task-form > input,
+.task-form > textarea {
+	width: 100%;
+	min-height: 2.75rem;
+	padding: 0.65rem 0.75rem;
+	border: 1px solid #cbd8cc;
+	border-radius: 5px;
+	color: var(--color-ink);
+	background: #fbfdfb;
+}
+
+.task-form > textarea {
+	min-height: 6rem;
+	resize: vertical;
+}
+
+.task-form .field-error {
+	margin-top: -0.45rem;
+	color: #b42318;
+	font-size: 0.82rem;
+}
+
+.task-form .field-error[hidden] {
+	display: none;
+}
+
+.task-form > input[aria-invalid="true"],
+.task-form > textarea[aria-invalid="true"] {
+	border-color: #c24137;
+}
+
+.task-form > label[for="task-important"] {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	margin-block: 0.35rem;
+}
+
+.task-form input[type="checkbox"] {
+	width: 1.1rem;
+	height: 1.1rem;
+	margin: 0;
+	accent-color: var(--color-accent);
+}
+
+.task-form footer {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.75rem;
+	margin-top: 0.5rem;
+}
+
+.task-form footer button {
+	min-height: 2.75rem;
+	padding: 0.6rem 1rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	background: var(--color-surface);
+	cursor: pointer;
+}
+
+.task-form footer button[type="submit"] {
+	border-color: var(--color-accent);
+	color: #102d1a;
+	background: var(--color-accent);
+	font-weight: 600;
+}
+
+.task-form footer button[type="submit"]:disabled {
+	border-color: #d6ded8;
+	color: #71827a;
+	background: #e8eee9;
+	cursor: not-allowed;
+	text-decoration: line-through;
+}
+
+.task-form footer button:hover {
+	filter: brightness(0.96);
+}
+
+.task-form footer button[type="submit"]:disabled:hover {
+	filter: none;
+}
+
+@media (max-width: 480px) {
+	.app-header {
+		min-height: 64px;
+		padding-inline: 0.75rem;
+	}
+
+	.app-header h1 {
+		font-size: 0.95rem;
+		text-align: center;
+	}
+
+	main {
+		width: min(100% - 1.5rem, 960px);
+		gap: 2rem;
+		padding-top: 1.5rem;
+	}
+
+	.weekdays li {
+		min-height: 3rem;
+		font-size: 0.8rem;
+	}
+
+	.task-form {
+		padding: 1.25rem;
+	}
+}
