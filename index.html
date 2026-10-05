@@ -22,19 +22,19 @@
   <meta name="twitter:description" content="Задачи, предметы и расписание колледжа в одном месте.">
   <meta name="twitter:image" content="https://fuk29385-stack.github.io/CCC/social-preview.png">
   <title>College Control Center — задачи и расписание</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="manifest" href="./manifest.json">
   <script>
     try {
       const savedTheme = localStorage.getItem("college-control-center.theme");
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      document.documentElement.dataset.theme = savedTheme || systemTheme;
+      document.documentElement.dataset.theme = savedTheme === "dark" || savedTheme === "light" ? savedTheme : systemTheme;
     } catch {
       document.documentElement.dataset.theme = "light";
     }
   </script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./style.css">
   
 </head>
 <body>
@@ -297,6 +297,6 @@
 
   <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="false"></div>
 
-<script src="app.js" defer></script>
+<script src="./app.js" defer></script>
 </body>
 </html>

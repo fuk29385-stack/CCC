@@ -8,6 +8,12 @@ function createId() {
 	return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function isValidDateString(value) {
+	return typeof value === "string"
+		&& /^\d{4}-\d{2}-\d{2}$/.test(value)
+		&& getLocalDateString(parseLocalDateString(value)) === value;
+}
+
 function loadStoredList(key) {
 	try {
 		const value = JSON.parse(localStorage.getItem(key) ?? "[]");
@@ -225,7 +231,7 @@ function importBackup(backup) {
 
 class Task {
 	constructor({
-		id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+		id = createId(),
 		title = "",
 		date = "",
 		subject = "",
@@ -246,27 +252,20 @@ class Task {
 }
 
 function loadTasks() {
-	try {
-		const storedTasks = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-		if (!Array.isArray(storedTasks)) return [];
-
-		// Восстанавливаем значения по умолчанию для неполных записей в хранилище.
-		return storedTasks
-			.filter((task) => task && typeof task === "object")
-			.map((task) => new Task({
-				id: typeof task.id === "string" ? task.id : undefined,
-				title: typeof task.title === "string" ? task.title : "",
-				date: typeof task.date === "string" ? task.date : "",
-				subject: typeof task.subject === "string" ? task.subject : "",
-				description: typeof task.description === "string" ? task.description : "",
-				isCompleted: task.isCompleted === true,
-				isImportant: task.isImportant === true,
-				createdAt: typeof task.createdAt === "string" ? task.createdAt : undefined,
-			}));
-	} catch (error) {
-		console.error("Не удалось загрузить задачи из localStorage.", error);
-		return [];
-	}
+	return loadStoredList(STORAGE_KEY)
+		.filter((task) => task && typeof task === "object" && !Array.isArray(task)
+			&& typeof task.title === "string" && task.title.trim()
+			&& isValidDateString(task.date))
+		.map((task) => new Task({
+			id: typeof task.id === "string" ? task.id : undefined,
+			title: task.title,
+			date: task.date,
+			subject: typeof task.subject === "string" ? task.subject : "",
+			description: typeof task.description === "string" ? task.description : "",
+			isCompleted: task.isCompleted === true,
+			isImportant: task.isImportant === true,
+			createdAt: typeof task.createdAt === "string" ? task.createdAt : undefined,
+		}));
 }
 
 function saveTasks() {
@@ -277,7 +276,9 @@ function loadSubjects() {
 	return loadStoredList(SUBJECT_STORAGE_KEY)
 		.filter((subject) => subject && typeof subject === "object" && typeof subject.name === "string")
 		.map((subject, index) => {
-			const color = /^#[0-9a-f]{6}$/i.test(subject.color) ? subject.color : SUBJECT_COLORS[index % SUBJECT_COLORS.length];
+			const color = typeof subject.color === "string" && /^#[0-9a-f]{6}$/i.test(subject.color)
+				? subject.color
+				: SUBJECT_COLORS[index % SUBJECT_COLORS.length];
 			return { id: typeof subject.id === "string" ? subject.id : createId(), name: subject.name.trim(), color };
 		})
 		.filter((subject) => subject.name);
@@ -288,12 +289,13 @@ function loadScheduleEntries() {
 		.filter((entry) => entry && typeof entry === "object")
 		.map((entry) => ({
 			id: typeof entry.id === "string" ? entry.id : createId(),
-			day: Number(entry.day),
+			day: typeof entry.day === "number" || typeof entry.day === "string" ? Number(entry.day) : Number.NaN,
 			time: typeof entry.time === "string" ? entry.time : "",
 			subject: typeof entry.subject === "string" ? entry.subject : "",
 			room: typeof entry.room === "string" ? entry.room : "",
 		}))
-		.filter((entry) => entry.day >= 1 && entry.day <= 6 && entry.time);
+		.filter((entry) => Number.isInteger(entry.day) && entry.day >= 1 && entry.day <= 6
+			&& /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(entry.time));
 }
 
 function saveSubjects() {

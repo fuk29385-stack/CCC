@@ -1393,17 +1393,6 @@ main {
 		right: 0.75rem;
 	}
 
-
-@media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		scroll-behavior: auto !important;
-		transition-duration: 0.01ms !important;
-	}
-}
 	.app-navigation {
 		justify-content: stretch;
 		gap: 0.2rem;
@@ -1432,5 +1421,16 @@ main {
 
 	.subject-item__actions .task-item__action {
 		flex: 1 1 auto;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
 	}
 }
