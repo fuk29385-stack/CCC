@@ -25,7 +25,19 @@
 
   <main>
     <section class="calendar" aria-labelledby="calendar-title">
-      <h2 id="calendar-title">Календарь</h2>
+      <div class="calendar__heading">
+        <h2 id="calendar-title">Календарь</h2>
+        <button class="calendar__today" id="calendar-today" type="button">Сегодня</button>
+      </div>
+      <div class="calendar__navigation">
+        <button class="calendar__month-button" id="calendar-previous" type="button" aria-label="Предыдущий месяц">
+          <span aria-hidden="true">&larr;</span>
+        </button>
+        <h3 class="calendar__month" id="calendar-month" aria-live="polite"></h3>
+        <button class="calendar__month-button" id="calendar-next" type="button" aria-label="Следующий месяц">
+          <span aria-hidden="true">&rarr;</span>
+        </button>
+      </div>
       <nav aria-label="Дни недели">
         <ul class="weekdays">
           <li>Пн</li>
@@ -37,6 +49,11 @@
           <li>Вс</li>
         </ul>
       </nav>
+      <div class="calendar__grid" id="calendar-grid" aria-labelledby="calendar-month"></div>
+      <div class="calendar__legend" aria-label="Обозначения задач">
+        <span><i class="calendar__dot calendar__dot--important" aria-hidden="true"></i>Важная</span>
+        <span><i class="calendar__dot calendar__dot--regular" aria-hidden="true"></i>Обычная</span>
+      </div>
     </section>
 
     <section class="tasks" aria-labelledby="tasks-title">
@@ -65,7 +82,7 @@
       <input id="task-subject" name="subject" type="text" required>
 
       <label for="task-description">Описание</label>
-      <textarea id="task-description" name="description" rows="4" required minlength="12"></textarea>
+      <textarea id="task-description" name="description" rows="4"></textarea>
 
       <label for="task-important">
         <input id="task-important" name="important" type="checkbox">
