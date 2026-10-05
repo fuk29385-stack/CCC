@@ -70,6 +70,159 @@ function showToast(message) {
 	}, 2800);
 }
 
+function getReminder() {
+	const today = getLocalDateString(new Date());
+	const tomorrowDate = new Date();
+	tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+	const tomorrow = getLocalDateString(tomorrowDate);
+	const todayTasks = tasks.filter((task) => !task.isCompleted && task.date === today);
+	if (todayTasks.length) {
+		return {
+			title: "Сегодня дедлайн",
+			body: todayTasks.map((task) => task.title).join(", "),
+			message: `Сегодня дедлайн: ${todayTasks.map((task) => task.title).join(", ")}`,
+		};
+	}
+
+	const tomorrowCount = tasks.filter((task) => !task.isCompleted && task.date === tomorrow).length;
+	if (tomorrowCount) {
+		return {
+			title: "Задачи на завтра",
+			body: `Задач: ${tomorrowCount}`,
+			message: `На завтра задач: ${tomorrowCount}`,
+		};
+	}
+	return null;
+}
+
+async function showReminderNotification(reminder) {
+	const options = {
+		body: reminder.body,
+		icon: new URL("./icon-192.png", document.baseURI).href,
+	};
+	if ("serviceWorker" in navigator) {
+		try {
+			const registration = await navigator.serviceWorker.getRegistration();
+			if (registration) {
+				await registration.showNotification(reminder.title, options);
+				return;
+			}
+		} catch (error) {
+			console.error("Не удалось показать уведомление через Service Worker.", error);
+		}
+	}
+
+	try {
+		new Notification(reminder.title, options);
+	} catch (error) {
+		console.error("Не удалось показать системное уведомление.", error);
+		showToast("Не удалось показать системное уведомление");
+	}
+}
+
+function renderReminder(showNotification = true) {
+	const reminder = getReminder();
+	reminderBanner.hidden = !reminder;
+	if (!reminder) return;
+	reminderMessage.textContent = reminder.message;
+	if (showNotification && "Notification" in window && Notification.permission === "granted") {
+		showReminderNotification(reminder);
+	}
+}
+
+function validateBackup(backup) {
+	const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+	if (!isRecord(backup) || backup.format !== "college-control-center" || backup.version !== 1) {
+		throw new Error("Файл не является резервной копией College Control Center версии 1.");
+	}
+	if (!Array.isArray(backup.tasks) || !Array.isArray(backup.subjects) || !Array.isArray(backup.schedule)) {
+		throw new Error("В файле должны быть списки задач, предметов и расписания.");
+	}
+
+	const importedTasks = backup.tasks.map((task, index) => {
+		if (!isRecord(task)
+			|| typeof task.id !== "string" || !task.id
+			|| typeof task.title !== "string" || !task.title.trim()
+			|| typeof task.date !== "string"
+			|| !/^\d{4}-\d{2}-\d{2}$/.test(task.date)
+			|| getLocalDateString(parseLocalDateString(task.date)) !== task.date
+			|| typeof task.subject !== "string" || !task.subject.trim()
+			|| typeof task.description !== "string"
+			|| typeof task.isCompleted !== "boolean"
+			|| typeof task.isImportant !== "boolean"
+			|| (task.createdAt !== undefined && typeof task.createdAt !== "string")) {
+			throw new Error(`Задача №${index + 1} содержит некорректные данные.`);
+		}
+		return new Task(task);
+	});
+
+	const importedSubjects = backup.subjects.map((subject, index) => {
+		if (!isRecord(subject)
+			|| typeof subject.id !== "string" || !subject.id
+			|| typeof subject.name !== "string" || !subject.name.trim()
+			|| typeof subject.color !== "string" || !/^#[0-9a-f]{6}$/i.test(subject.color)) {
+			throw new Error(`Предмет №${index + 1} содержит некорректные данные.`);
+		}
+		return { id: subject.id, name: subject.name.trim(), color: subject.color };
+	});
+	const subjectNames = importedSubjects.map((subject) => subject.name.toLocaleLowerCase("ru-RU"));
+	if (new Set(subjectNames).size !== subjectNames.length) {
+		throw new Error("В резервной копии есть предметы с одинаковыми названиями.");
+	}
+
+	const importedSchedule = backup.schedule.map((entry, index) => {
+		if (!isRecord(entry)
+			|| typeof entry.id !== "string" || !entry.id
+			|| !Number.isInteger(entry.day) || entry.day < 1 || entry.day > 6
+			|| typeof entry.time !== "string" || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(entry.time)
+			|| typeof entry.subject !== "string" || !entry.subject.trim()
+			|| typeof entry.room !== "string") {
+			throw new Error(`Запись расписания №${index + 1} содержит некорректные данные.`);
+		}
+		return { id: entry.id, day: entry.day, time: entry.time, subject: entry.subject, room: entry.room };
+	});
+
+	return { tasks: importedTasks, subjects: importedSubjects, schedule: importedSchedule };
+}
+
+function importBackup(backup) {
+	const data = validateBackup(backup);
+	const storedValues = [
+		[STORAGE_KEY, data.tasks],
+		[SUBJECT_STORAGE_KEY, data.subjects],
+		[SCHEDULE_STORAGE_KEY, data.schedule],
+	];
+	const previousValues = storedValues.map(([key]) => localStorage.getItem(key));
+
+	try {
+		for (const [key, value] of storedValues) {
+			localStorage.setItem(key, JSON.stringify(value));
+		}
+	} catch (error) {
+		for (let index = 0; index < storedValues.length; index += 1) {
+			try {
+				const [key] = storedValues[index];
+				const previousValue = previousValues[index];
+				if (previousValue === null) localStorage.removeItem(key);
+				else localStorage.setItem(key, previousValue);
+			} catch (rollbackError) {
+				console.error("Не удалось восстановить данные после ошибки импорта.", rollbackError);
+			}
+		}
+		throw new Error(`Не удалось сохранить резервную копию: ${error.message}`);
+	}
+
+	tasks.splice(0, tasks.length, ...data.tasks);
+	subjects.splice(0, subjects.length, ...data.subjects);
+	scheduleEntries.splice(0, scheduleEntries.length, ...data.schedule);
+	updateSubjectSelectors();
+	renderCalendar();
+	renderTasks();
+	renderSubjectList();
+	renderSchedule();
+	renderReminder(false);
+}
+
 class Task {
 	constructor({
 		id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -188,6 +341,12 @@ const menuOpenButton = document.querySelector("#menu-open");
 const menuCloseButton = document.querySelector("#menu-close");
 const sidePanel = document.querySelector("#side-panel");
 const toastRegion = document.querySelector("#toast-region");
+const exportDataButton = document.querySelector("#export-data");
+const importDataButton = document.querySelector("#import-data");
+const importFileInput = document.querySelector("#import-file");
+const notificationButton = document.querySelector("#enable-notifications");
+const reminderBanner = document.querySelector("#reminder-banner");
+const reminderMessage = document.querySelector("#reminder-message");
 for (const dialog of document.querySelectorAll("dialog")) {
 	dialog.addEventListener("keydown", (event) => {
 		if (event.key !== "Escape") return;
@@ -331,6 +490,68 @@ function switchPage(pageName) {
 
 function closeSidePanel() {
 	if (sidePanel.open) sidePanel.close();
+}
+
+exportDataButton.addEventListener("click", () => {
+	const backup = {
+		format: "college-control-center",
+		version: 1,
+		exportedAt: new Date().toISOString(),
+		tasks,
+		subjects,
+		schedule: scheduleEntries,
+	};
+	const file = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+	const downloadUrl = URL.createObjectURL(file);
+	const link = document.createElement("a");
+	link.href = downloadUrl;
+	link.download = `college-control-center-${getLocalDateString(new Date())}.json`;
+	document.body.append(link);
+	link.click();
+	link.remove();
+	window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+	showToast("Резервная копия скачана");
+});
+
+importDataButton.addEventListener("click", () => importFileInput.click());
+importFileInput.addEventListener("change", async () => {
+	const file = importFileInput.files?.[0];
+	if (!file) return;
+	try {
+		const backup = JSON.parse(await file.text());
+		importBackup(backup);
+		showToast("Задачи, предметы и расписание восстановлены");
+	} catch (error) {
+		console.error("Не удалось импортировать резервную копию.", error);
+		showToast(error instanceof SyntaxError ? "Файл не содержит корректный JSON" : error.message);
+	} finally {
+		importFileInput.value = "";
+	}
+});
+
+if ("Notification" in window && Notification.permission === "default") {
+	notificationButton.hidden = false;
+	notificationButton.addEventListener("click", async () => {
+		try {
+			const permission = await Notification.requestPermission();
+			notificationButton.hidden = true;
+			if (permission === "granted") {
+				const reminder = getReminder();
+				if (reminder) showReminderNotification(reminder);
+				showToast("Системные уведомления включены");
+			} else if (permission === "denied") {
+				showToast("Разрешите уведомления в настройках браузера");
+			}
+		} catch (error) {
+			console.error("Не удалось запросить разрешение на уведомления.", error);
+			showToast("Не удалось включить уведомления");
+		}
+	});
+}
+
+if ("serviceWorker" in navigator && window.isSecureContext) {
+	navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+		.catch((error) => console.error("Не удалось зарегистрировать Service Worker.", error));
 }
 
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -531,6 +752,7 @@ function saveSubjectFromForm(event) {
 	renderSubjectList();
 	renderCalendar();
 	renderTasks();
+	renderReminder(false);
 	renderSchedule();
 	showToast(isEditing ? "Предмет обновлён" : "Предмет добавлен");
 }
@@ -728,6 +950,7 @@ function createTaskElement(task) {
 			task.isCompleted = !task.isCompleted;
 			saveTasks();
 			renderTasks();
+			renderReminder(false);
 			showToast(task.isCompleted ? "Задача выполнена" : "Задача возвращена в активные");
 		},
 	);
@@ -743,6 +966,7 @@ function createTaskElement(task) {
 			saveTasks();
 			renderCalendar();
 			renderTasks();
+			renderReminder(false);
 			renderSubjectList();
 			showToast("Задача удалена");
 		};
@@ -1040,6 +1264,7 @@ taskForm.addEventListener("submit", (event) => {
 	taskDialog.close();
 	renderCalendar();
 	setTaskFilter("day");
+	renderReminder(false);
 	renderSubjectList();
 	if (!isEditing) {
 		const newTaskElement = [...taskList.querySelectorAll(".task-item")].find((item) => item.dataset.taskId === savedTaskId);
@@ -1054,3 +1279,4 @@ renderSubjectList();
 renderSchedule();
 renderCalendar();
 renderTasks();
+renderReminder();

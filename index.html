@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="College Control Center — удобный планировщик задач, предметов и расписания для студентов колледжа.">
   <meta name="theme-color" content="#18352d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ru_RU">
   <meta property="og:title" content="College Control Center">
@@ -20,6 +23,8 @@
   <meta name="twitter:image" content="https://fuk29385-stack.github.io/CCC/social-preview.png">
   <title>College Control Center — задачи и расписание</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="manifest" href="manifest.json">
   <script>
     try {
       const savedTheme = localStorage.getItem("college-control-center.theme");
@@ -75,7 +80,17 @@
     <button type="button" data-view-button="schedule" aria-pressed="false">Расписание</button>
   </nav>
 
+  <section class="app-tools" aria-label="Данные и уведомления">
+    <button class="app-tools__button" id="export-data" type="button">Экспорт</button>
+    <button class="app-tools__button" id="import-data" type="button">Импорт</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
+    <button class="app-tools__button" id="enable-notifications" type="button" hidden>Включить уведомления</button>
+  </section>
+
   <main>
+    <section class="reminder-banner" id="reminder-banner" aria-live="polite" hidden>
+      <span id="reminder-message"></span>
+    </section>
     <section class="page-view page-view--tasks" id="tasks-view" data-page-view="tasks">
     <section class="calendar" aria-labelledby="calendar-title">
       <div class="calendar__heading">

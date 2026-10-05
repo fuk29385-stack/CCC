@@ -133,6 +133,40 @@ a:focus-visible,
 	background: #f3f7f2;
 }
 
+.app-tools {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.5rem;
+	padding: 0.75rem 1rem;
+	border-bottom: 1px solid var(--color-line);
+	background: var(--color-surface);
+}
+
+.app-tools__button {
+	min-height: 2.5rem;
+	padding: 0.45rem 0.85rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	color: var(--color-text);
+	background: var(--color-surface);
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.app-tools__button:hover {
+	background: #edf5ed;
+}
+
+.reminder-banner {
+	padding: 0.9rem 1rem;
+	border: 1px solid #9ac6a1;
+	border-radius: 6px;
+	color: #f5fff4;
+	background: #18352d;
+	font-weight: 600;
+}
+
 [hidden] {
 	display: none !important;
 }
@@ -1135,6 +1169,16 @@ main {
 :root[data-theme="dark"] .app-navigation button[aria-pressed="true"] {
 	color: var(--color-text);
 	background: #2b4034;
+}
+
+:root[data-theme="dark"] .app-tools__button {
+	border-color: var(--color-line);
+	color: var(--color-text);
+	background: var(--color-surface);
+}
+
+:root[data-theme="dark"] .app-tools__button:hover {
+	background: #2a3d32;
 }
 
 :root[data-theme="dark"] .app-navigation button:hover:not([aria-pressed="true"]),
