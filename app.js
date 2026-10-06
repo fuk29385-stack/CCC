@@ -169,6 +169,7 @@ function validateBackup(backup) {
 			|| typeof task.description !== "string"
 			|| typeof task.isCompleted !== "boolean"
 			|| typeof task.isImportant !== "boolean"
+			|| (task.status !== undefined && !["todo", "in-progress", "done"].includes(task.status))
 			|| (task.createdAt !== undefined && typeof task.createdAt !== "string")) {
 			throw new Error(`Задача №${index + 1} содержит некорректные данные.`);
 		}
@@ -251,6 +252,7 @@ class Task {
 		description = "",
 		isCompleted = false,
 		isImportant = false,
+		status = isCompleted ? "done" : "todo",
 		createdAt = new Date().toISOString(),
 	} = {}) {
 		this.id = id;
@@ -260,6 +262,7 @@ class Task {
 		this.description = description;
 		this.isCompleted = isCompleted;
 		this.isImportant = isImportant;
+		this.status = isCompleted ? "done" : status === "in-progress" ? "in-progress" : "todo";
 		this.createdAt = createdAt;
 	}
 }
@@ -277,6 +280,7 @@ function loadTasks() {
 			description: typeof task.description === "string" ? task.description : "",
 			isCompleted: task.isCompleted === true,
 			isImportant: task.isImportant === true,
+			status: ["todo", "in-progress", "done"].includes(task.status) ? task.status : undefined,
 			createdAt: typeof task.createdAt === "string" ? task.createdAt : undefined,
 		}));
 }
@@ -411,6 +415,10 @@ const taskForm = document.querySelector(".task-form");
 const taskDialog = document.querySelector(".task-dialog");
 const taskDialogTitle = document.querySelector("#task-dialog-title");
 const taskList = document.querySelector(".task-list");
+const taskViewButtons = [...document.querySelectorAll("[data-task-view]")];
+const taskCalendarView = document.querySelector("#task-calendar-view");
+const taskBoard = document.querySelector("#task-board");
+const taskBoardColumns = [...document.querySelectorAll("[data-task-status]")];
 const tasksTitle = document.querySelector("#tasks-title");
 const taskSearchInput = document.querySelector("#task-search");
 const taskSubjectFilter = document.querySelector("#task-subject-filter");
@@ -431,6 +439,7 @@ const initialDate = new Date();
 let selectedDate = getLocalDateString(initialDate);
 let displayedMonth = new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
 let activeTaskFilter = "all";
+let activeTaskView = "list";
 let editingTaskId = null;
 let editingSubjectId = null;
 let editingScheduleId = null;
@@ -498,8 +507,22 @@ for (const field of taskFields) {
 
 taskSearchInput.addEventListener("input", renderTasks);
 taskSubjectFilter.addEventListener("change", renderTasks);
+for (const button of taskViewButtons) {
+	button.addEventListener("click", () => setTaskView(button.dataset.taskView));
+}
 for (const button of taskFilterButtons) {
 	button.addEventListener("click", () => setTaskFilter(button.dataset.taskFilter));
+}
+
+function setTaskView(view) {
+	activeTaskView = view;
+	for (const button of taskViewButtons) {
+		button.setAttribute("aria-pressed", String(button.dataset.taskView === view));
+	}
+	taskCalendarView.hidden = view !== "calendar";
+	taskList.hidden = view === "board";
+	taskBoard.hidden = view !== "board";
+	renderTasks();
 }
 
 function switchPage(pageName) {
@@ -786,6 +809,7 @@ for (const link of sidePanel.querySelectorAll("a")) {
 		if (pageName) {
 			event.preventDefault();
 			switchPage(pageName);
+			if (link.dataset.menuScroll === "#calendar-title") setTaskView("calendar");
 		}
 		closeSidePanel();
 		const scrollTarget = link.dataset.menuScroll;
@@ -1150,19 +1174,41 @@ function createTaskElement(task) {
 
 	const actions = document.createElement("div");
 	actions.className = "task-item__actions";
-	const completeButton = createTaskAction(
-		task.isCompleted ? "Не выполнено" : "Выполнено",
-		"",
+	const statusButton = createTaskAction(
+		task.status === "in-progress" ? "Вернуть в список" : "Начать выполнение",
+		"task-item__action--status",
 		() => {
-			task.isCompleted = !task.isCompleted;
+			task.status = task.status === "in-progress" ? "todo" : "in-progress";
 			saveTasks();
 			renderTasks();
-			renderReminder(false);
-			showToast(task.isCompleted ? "Задача выполнена" : "Задача возвращена в активные");
 		},
 	);
-	completeButton.setAttribute("aria-pressed", String(task.isCompleted));
-	actions.append(completeButton);
+	actions.append(statusButton);
+	const completeLabel = document.createElement("label");
+	completeLabel.className = "task-item__complete";
+	const completeCheckbox = document.createElement("input");
+	completeCheckbox.type = "checkbox";
+	completeCheckbox.checked = task.isCompleted;
+	completeCheckbox.addEventListener("change", () => {
+		task.isCompleted = completeCheckbox.checked;
+		task.status = task.isCompleted ? "done" : "todo";
+		saveTasks();
+		renderReminder(false);
+		updateTaskStatistics();
+		if (task.isCompleted) {
+			completeCheckbox.disabled = true;
+			item.classList.add("is-completing");
+			launchConfetti();
+			const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			window.setTimeout(renderTasks, reducedMotion ? 20 : 520);
+		} else {
+			renderTasks();
+		}
+		showToast(task.isCompleted ? "Задача выполнена" : "Задача возвращена в активные");
+	});
+	completeLabel.append(completeCheckbox, document.createTextNode("Выполнено"));
+	actions.append(completeLabel);
+	statusButton.hidden = task.isCompleted;
 	actions.append(createTaskAction("Редактировать", "", () => openTaskDialog(task.id)));
 	actions.append(createTaskAction("Удалить", "task-item__action--delete", () => {
 		if (!window.confirm(`Удалить задачу «${task.title}»?`)) return;
@@ -1197,6 +1243,70 @@ function createTaskAction(label, modifier, onClick) {
 	button.textContent = label;
 	button.addEventListener("click", onClick);
 	return button;
+}
+
+function launchConfetti() {
+	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+	const canvas = document.createElement("canvas");
+	const context = canvas.getContext("2d");
+	if (!context) {
+		console.warn("Не удалось запустить конфетти: Canvas 2D недоступен.");
+		return;
+	}
+
+	const pixelRatio = window.devicePixelRatio || 1;
+	const resizeCanvas = () => {
+		canvas.width = window.innerWidth * pixelRatio;
+		canvas.height = window.innerHeight * pixelRatio;
+		canvas.style.width = `${window.innerWidth}px`;
+		canvas.style.height = `${window.innerHeight}px`;
+		context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+	};
+	canvas.className = "confetti-canvas";
+	canvas.setAttribute("aria-hidden", "true");
+	resizeCanvas();
+	document.body.append(canvas);
+	window.addEventListener("resize", resizeCanvas);
+
+	const colors = ["#50bd66", "#9adc83", "#f4ce65", "#f28c68", "#73b8e8"];
+	const particles = Array.from({ length: 100 }, () => ({
+		x: Math.random() * window.innerWidth,
+		y: -Math.random() * window.innerHeight * 0.35,
+		vx: (Math.random() - 0.5) * 5,
+		vy: Math.random() * 3 + 2,
+		width: Math.random() * 7 + 4,
+		height: Math.random() * 5 + 3,
+		rotation: Math.random() * Math.PI * 2,
+		spin: (Math.random() - 0.5) * 0.18,
+		color: colors[Math.floor(Math.random() * colors.length)],
+	}));
+	const startedAt = performance.now();
+
+	function drawConfetti(now) {
+		context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		for (const particle of particles) {
+			particle.x += particle.vx;
+			particle.y += particle.vy;
+			particle.vy += 0.045;
+			particle.rotation += particle.spin;
+			context.save();
+			context.translate(particle.x, particle.y);
+			context.rotate(particle.rotation);
+			context.fillStyle = particle.color;
+			context.fillRect(-particle.width / 2, -particle.height / 2, particle.width, particle.height);
+			context.restore();
+		}
+
+		if (now - startedAt < 1800) {
+			window.requestAnimationFrame(drawConfetti);
+		} else {
+			window.removeEventListener("resize", resizeCanvas);
+			canvas.remove();
+		}
+	}
+
+	window.requestAnimationFrame(drawConfetti);
 }
 
 function renderCalendar() {
@@ -1314,6 +1424,7 @@ function updateTaskStatistics() {
 
 function renderTasks() {
 	taskList.replaceChildren();
+	for (const column of taskBoardColumns) column.replaceChildren();
 	updateTaskStatistics();
 	updateSubjectSelectors();
 	const todayDate = new Date();
@@ -1381,14 +1492,36 @@ function renderTasks() {
 			emptyState.append(resetButton);
 		}
 
-		taskList.append(emptyState);
-		return;
+		if (activeTaskView !== "board") {
+			taskList.append(emptyState);
+			return;
+		}
+		taskBoardColumns[0].append(emptyState);
 	}
 
 	// Сначала показываем активные задачи, затем выполненные.
 	const sortedTasks = [...visibleTasks].sort((first, second) => Number(first.isCompleted) - Number(second.isCompleted) || first.date.localeCompare(second.date));
 	const taskElements = sortedTasks.map(createTaskElement);
-	taskList.append(...taskElements);
+	if (activeTaskView === "board") {
+		const tasksById = new Map(tasks.map((task) => [task.id, task]));
+		for (const column of taskBoardColumns) {
+			const status = column.dataset.taskStatus;
+			const columnTasks = taskElements.filter((element) => {
+				const task = tasksById.get(element.dataset.taskId);
+				return task && (task.isCompleted ? "done" : task.status) === status;
+			});
+			if (columnTasks.length) column.append(...columnTasks);
+			if (visibleTasks.length > 0 && columnTasks.length === 0) {
+				const emptyColumn = document.createElement("li");
+				emptyColumn.className = "task-board__empty";
+				emptyColumn.textContent = "Нет задач";
+				column.append(emptyColumn);
+			}
+			taskBoard.querySelector(`[data-task-count="${status}"]`).textContent = String(columnTasks.length);
+		}
+	} else {
+		taskList.append(...taskElements);
+	}
 }
 
 function openTaskDialog(taskId = null) {
@@ -1474,7 +1607,8 @@ taskForm.addEventListener("submit", (event) => {
 	renderReminder(false);
 	renderSubjectList();
 	if (!isEditing) {
-		const newTaskElement = [...taskList.querySelectorAll(".task-item")].find((item) => item.dataset.taskId === savedTaskId);
+		const newTaskElement = [...taskList.querySelectorAll(".task-item"), ...taskBoard.querySelectorAll(".task-item")]
+			.find((item) => item.dataset.taskId === savedTaskId);
 		newTaskElement?.classList.add("is-entering");
 	}
 	showToast(isEditing ? "Задача обновлена" : "Задача добавлена");

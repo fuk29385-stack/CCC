@@ -92,40 +92,13 @@
       <span id="reminder-message"></span>
     </section>
     <section class="page-view page-view--tasks" id="tasks-view" data-page-view="tasks">
-    <section class="calendar" aria-labelledby="calendar-title">
-      <div class="calendar__heading">
-        <h2 id="calendar-title">Календарь</h2>
-        <button class="calendar__today" id="calendar-today" type="button">Сегодня</button>
-      </div>
-      <div class="calendar__navigation">
-        <button class="calendar__month-button" id="calendar-previous" type="button" aria-label="Предыдущий месяц">
-          <span aria-hidden="true">&larr;</span>
-        </button>
-        <h3 class="calendar__month" id="calendar-month" aria-live="polite"></h3>
-        <button class="calendar__month-button" id="calendar-next" type="button" aria-label="Следующий месяц">
-          <span aria-hidden="true">&rarr;</span>
-        </button>
-      </div>
-      <nav aria-label="Дни недели">
-        <ul class="weekdays">
-          <li>Пн</li>
-          <li>Вт</li>
-          <li>Ср</li>
-          <li>Чт</li>
-          <li>Пт</li>
-          <li>Сб</li>
-          <li>Вс</li>
-        </ul>
-      </nav>
-      <div class="calendar__grid" id="calendar-grid" aria-labelledby="calendar-month"></div>
-      <div class="calendar__legend" aria-label="Обозначения задач">
-        <span><i class="calendar__dot calendar__dot--important" aria-hidden="true"></i>Важная</span>
-        <span><i class="calendar__dot calendar__dot--regular" aria-hidden="true"></i>Обычная</span>
-      </div>
-    </section>
-
     <section class="tasks" aria-labelledby="tasks-title">
       <h2 id="tasks-title">Мои задачи</h2>
+      <div class="task-view-switcher" role="group" aria-label="Вид задач">
+        <button type="button" data-task-view="list" aria-pressed="true">Список</button>
+        <button type="button" data-task-view="board" aria-pressed="false">Канбан-доска</button>
+        <button type="button" data-task-view="calendar" aria-pressed="false">Календарь</button>
+      </div>
       <div class="task-dashboard">
         <dl class="task-statistics" aria-label="Статистика задач">
           <div class="task-statistic">
@@ -167,7 +140,52 @@
           </label>
         </div>
       </div>
+      <section class="calendar task-calendar" id="task-calendar-view" aria-labelledby="calendar-title" hidden>
+        <div class="calendar__heading">
+          <h2 id="calendar-title">Календарь</h2>
+          <button class="calendar__today" id="calendar-today" type="button">Сегодня</button>
+        </div>
+        <div class="calendar__navigation">
+          <button class="calendar__month-button" id="calendar-previous" type="button" aria-label="Предыдущий месяц">
+            <span aria-hidden="true">&larr;</span>
+          </button>
+          <h3 class="calendar__month" id="calendar-month" aria-live="polite"></h3>
+          <button class="calendar__month-button" id="calendar-next" type="button" aria-label="Следующий месяц">
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </div>
+        <nav aria-label="Дни недели">
+          <ul class="weekdays">
+            <li>Пн</li>
+            <li>Вт</li>
+            <li>Ср</li>
+            <li>Чт</li>
+            <li>Пт</li>
+            <li>Сб</li>
+            <li>Вс</li>
+          </ul>
+        </nav>
+        <div class="calendar__grid" id="calendar-grid" aria-labelledby="calendar-month"></div>
+        <div class="calendar__legend" aria-label="Обозначения задач">
+          <span><i class="calendar__dot calendar__dot--important" aria-hidden="true"></i>Важная</span>
+          <span><i class="calendar__dot calendar__dot--regular" aria-hidden="true"></i>Обычная</span>
+        </div>
+      </section>
       <ul class="task-list" aria-live="polite"></ul>
+      <section class="task-board" id="task-board" aria-label="Канбан-доска" hidden>
+        <section class="task-board__column" aria-labelledby="task-board-todo-title">
+          <h3 id="task-board-todo-title">К выполнению <span data-task-count="todo">0</span></h3>
+          <ul class="task-list task-board__list" data-task-status="todo" aria-label="Задачи к выполнению"></ul>
+        </section>
+        <section class="task-board__column" aria-labelledby="task-board-progress-title">
+          <h3 id="task-board-progress-title">В работе <span data-task-count="in-progress">0</span></h3>
+          <ul class="task-list task-board__list" data-task-status="in-progress" aria-label="Задачи в работе"></ul>
+        </section>
+        <section class="task-board__column" aria-labelledby="task-board-done-title">
+          <h3 id="task-board-done-title">Готово <span data-task-count="done">0</span></h3>
+          <ul class="task-list task-board__list" data-task-status="done" aria-label="Выполненные задачи"></ul>
+        </section>
+      </section>
     </section>
     </section>
 

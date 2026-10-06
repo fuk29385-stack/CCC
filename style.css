@@ -12,6 +12,8 @@
 	--color-line: #dce6dc;
 	--color-surface: #ffffff;
 	--color-accent: #50bd66;
+	--color-status-progress: #a5641b;
+	--color-status-done: #348148;
 }
 
 :root[data-theme="dark"] {
@@ -22,6 +24,8 @@
 	--color-line: #3b4c42;
 	--color-surface: #1b2a22;
 	--color-accent: #69d183;
+	--color-status-progress: #e3b35f;
+	--color-status-done: #79cf8b;
 }
 
 * {
@@ -221,6 +225,117 @@ main {
 	margin: 0 0 1.25rem;
 	font-size: 1.25rem;
 	font-weight: 600;
+}
+
+.task-view-switcher {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin-bottom: 1.25rem;
+	padding: 0.3rem;
+	border: 1px solid var(--color-line);
+	border-radius: 7px;
+	background: var(--color-surface);
+}
+
+.task-view-switcher button {
+	min-height: 2.5rem;
+	flex: 1 1 8rem;
+	padding: 0.45rem 0.75rem;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	color: var(--color-muted);
+	background: transparent;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.task-view-switcher button[aria-pressed="true"] {
+	border-color: var(--color-ink);
+	color: #f5fff4;
+	background: var(--color-ink);
+}
+
+.task-view-switcher button:focus-visible {
+	outline: 3px solid #9adc83;
+	outline-offset: 2px;
+}
+
+.task-calendar {
+	margin-bottom: 1.25rem;
+}
+
+.task-board {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	align-items: start;
+	gap: 0.9rem;
+}
+
+.task-board__column {
+	min-width: 0;
+	padding: 0.8rem;
+	border: 1px solid var(--color-line);
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--color-surface) 88%, var(--color-page));
+}
+
+.task-board__column h3 {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin: 0 0 0.75rem;
+	font-size: 0.95rem;
+}
+
+.task-board__column h3 span {
+	display: grid;
+	min-width: 1.6rem;
+	height: 1.6rem;
+	place-items: center;
+	border-radius: 50%;
+	color: var(--color-muted);
+	background: var(--color-page);
+	font-size: 0.8rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.task-board__list {
+	gap: 0.6rem;
+	min-height: 0;
+}
+
+.task-board__list .task-item {
+	padding: 0.8rem;
+}
+
+.task-board__empty {
+	padding: 0.65rem;
+	color: var(--color-muted);
+	font-size: 0.85rem;
+	text-align: center;
+}
+
+.task-board__list .empty-state {
+	min-height: 0;
+	padding: 0.65rem;
+}
+
+.task-board__list .empty-state p {
+	font-size: 0.9rem;
+}
+
+.task-board #task-board-todo-title {
+	color: var(--color-muted);
+}
+
+.task-board #task-board-progress-title {
+	color: var(--color-status-progress);
+}
+
+.task-board #task-board-done-title {
+	color: var(--color-status-done);
 }
 
 .calendar__heading {
@@ -636,6 +751,35 @@ main {
 	color: #9f2520;
 }
 
+.task-item__complete {
+	display: inline-flex;
+	min-height: 2.5rem;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.4rem 0.65rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	background: var(--color-surface);
+	font-size: 0.9rem;
+	cursor: pointer;
+}
+
+.task-item__complete input {
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+	accent-color: var(--color-accent);
+}
+
+.task-item__action--status,
+.task-item__action--status[hidden] {
+	display: none;
+}
+
+#task-board:not([hidden]) .task-item__action--status:not([hidden]) {
+	display: inline-flex;
+}
+
 .task-item.is-completed {
 	background: #edf1ee;
 }
@@ -648,6 +792,37 @@ main {
 .task-item.is-completed .task-item__title {
 	color: var(--color-muted);
 	text-decoration: line-through;
+}
+
+.task-item.is-completing {
+	pointer-events: none;
+	animation: task-complete 520ms ease forwards;
+}
+
+.task-item.is-completing .task-item__title {
+	text-decoration-line: line-through;
+	text-decoration-color: transparent;
+	animation: task-title-strike 520ms ease forwards;
+}
+
+@keyframes task-complete {
+	to {
+		opacity: 0.35;
+		transform: translateY(4px);
+	}
+}
+
+@keyframes task-title-strike {
+	to {
+		text-decoration-color: var(--color-muted);
+	}
+}
+
+.confetti-canvas {
+	position: fixed;
+	z-index: 1000;
+	inset: 0;
+	pointer-events: none;
 }
 
 .add-task-button {
@@ -1460,6 +1635,12 @@ main {
 
 	.subject-item__actions .task-item__action {
 		flex: 1 1 auto;
+	}
+}
+
+@media (max-width: 760px) {
+	.task-board {
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
 
