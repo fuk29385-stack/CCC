@@ -3,6 +3,7 @@ const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
 const THEME_STORAGE_KEY = "college-control-center.theme";
 const TIMER_STORAGE_KEY = "college-control-center.timer";
+const ACTIVITY_STORAGE_KEY = "college-control-center.activity-dates";
 const CONTACT_ACCESS_KEY = "c7a33ed6-fa8e-42be-add3-76cf18b1f359";
 const CONTACT_COOLDOWN_KEY = "college-control-center.contact-last-submit";
 const CONTACT_COOLDOWN_MS = 30_000;
@@ -73,6 +74,82 @@ function loadTimerState() {
 		tagName: typeof storedTimer.tagName === "string" ? storedTimer.tagName : "",
 		completionStatus: storedTimer.completionStatus === "done" ? "done" : "in-progress",
 	};
+}
+
+function loadActivityDates() {
+	return [...new Set(loadStoredList(ACTIVITY_STORAGE_KEY).filter(isValidDateString))].sort();
+}
+
+function isValidCompletionTimestamp(value) {
+	return typeof value === "string" && value.length > 0 && Number.isFinite(Date.parse(value));
+}
+
+function getTaskCompletionDate(task) {
+	return isValidCompletionTimestamp(task.completedAt)
+		? getLocalDateString(new Date(task.completedAt))
+		: null;
+}
+
+function getStreakCount() {
+	const today = getLocalDateString(new Date());
+	const latestActivity = activityDates.at(-1);
+	if (!latestActivity || (latestActivity !== today && latestActivity !== shiftDateString(today, -1))) return 0;
+
+	let streak = 0;
+	let day = latestActivity;
+	while (activityDates.includes(day)) {
+		streak += 1;
+		day = shiftDateString(day, -1);
+	}
+	return streak;
+}
+
+function getStreakLabel(days) {
+	const remainder = days % 10;
+	const lastTwoDigits = days % 100;
+	const noun = lastTwoDigits >= 11 && lastTwoDigits <= 14
+		? "дней"
+		: remainder === 1
+			? "день"
+			: remainder >= 2 && remainder <= 4
+				? "дня"
+				: "дней";
+	return `${days} ${noun}`;
+}
+
+function renderStreak() {
+	const streak = getStreakCount();
+	const label = getStreakLabel(streak);
+	streakCount.textContent = label;
+	streakBadge.setAttribute("aria-label", `Текущая серия активности: ${label}`);
+}
+
+function recordTaskCompletion(task) {
+	task.isCompleted = true;
+	task.status = "done";
+	task.completedAt = new Date().toISOString();
+	const today = getLocalDateString(new Date());
+	if (!activityDates.includes(today)) {
+		activityDates.push(today);
+		activityDates.sort();
+		saveStoredList(ACTIVITY_STORAGE_KEY, activityDates);
+	}
+	renderStreak();
+}
+
+function syncActivityDatesFromTasks() {
+	let hasNewDates = false;
+	for (const task of tasks) {
+		const completionDate = task.isCompleted ? getTaskCompletionDate(task) : null;
+		if (completionDate && !activityDates.includes(completionDate)) {
+			activityDates.push(completionDate);
+			hasNewDates = true;
+		}
+	}
+	if (hasNewDates) {
+		activityDates.sort();
+		saveStoredList(ACTIVITY_STORAGE_KEY, activityDates);
+	}
 }
 
 function loadLastContactSubmission() {
@@ -249,6 +326,7 @@ function validateBackup(backup) {
 			|| typeof task.description !== "string"
 			|| typeof task.isCompleted !== "boolean"
 			|| typeof task.isImportant !== "boolean"
+			|| (task.completedAt !== undefined && task.completedAt !== null && !isValidCompletionTimestamp(task.completedAt))
 			|| (task.tags !== undefined && !hasValidTags(task.tags))
 			|| (task.status !== undefined && !["todo", "in-progress", "done"].includes(task.status))
 			|| (task.createdAt !== undefined && typeof task.createdAt !== "string")) {
@@ -283,7 +361,20 @@ function validateBackup(backup) {
 		return { id: entry.id, day: entry.day, time: entry.time, subject: entry.subject, room: entry.room };
 	});
 
-	return { tasks: importedTasks, subjects: importedSubjects, schedule: importedSchedule };
+	let importedActivityDates = [];
+	if (backup.activityDates !== undefined) {
+		if (!Array.isArray(backup.activityDates) || backup.activityDates.some((date) => !isValidDateString(date))) {
+			throw new Error("История активности содержит некорректные даты.");
+		}
+		importedActivityDates = [...new Set(backup.activityDates)].sort();
+	}
+	for (const task of importedTasks) {
+		const completionDate = task.isCompleted ? getTaskCompletionDate(task) : null;
+		if (completionDate && !importedActivityDates.includes(completionDate)) importedActivityDates.push(completionDate);
+	}
+	importedActivityDates.sort();
+
+	return { tasks: importedTasks, subjects: importedSubjects, schedule: importedSchedule, activityDates: importedActivityDates };
 }
 
 function importBackup(backup) {
@@ -292,6 +383,7 @@ function importBackup(backup) {
 		[STORAGE_KEY, data.tasks],
 		[SUBJECT_STORAGE_KEY, data.subjects],
 		[SCHEDULE_STORAGE_KEY, data.schedule],
+		[ACTIVITY_STORAGE_KEY, data.activityDates],
 	];
 	const previousValues = storedValues.map(([key]) => localStorage.getItem(key));
 
@@ -316,12 +408,15 @@ function importBackup(backup) {
 	tasks.splice(0, tasks.length, ...data.tasks);
 	subjects.splice(0, subjects.length, ...data.subjects);
 	scheduleEntries.splice(0, scheduleEntries.length, ...data.schedule);
+	activityDates.splice(0, activityDates.length, ...data.activityDates);
 	updateSubjectSelectors();
 	renderCalendar();
 	renderTasks();
 	renderSubjectList();
 	renderSchedule();
 	renderReminder(false);
+	renderStreak();
+	renderAnalytics();
 }
 
 class Task {
@@ -334,6 +429,7 @@ class Task {
 		isCompleted = false,
 		isImportant = false,
 		tags = [],
+		completedAt = null,
 		status = isCompleted ? "done" : "todo",
 		createdAt = new Date().toISOString(),
 	} = {}) {
@@ -346,6 +442,7 @@ class Task {
 		this.isImportant = isImportant;
 		this.tags = normalizeTaskTags(tags);
 		this.status = isCompleted ? "done" : status === "in-progress" ? "in-progress" : "todo";
+		this.completedAt = isValidCompletionTimestamp(completedAt) ? completedAt : null;
 		this.createdAt = createdAt;
 	}
 }
@@ -364,6 +461,7 @@ function loadTasks() {
 			isCompleted: task.isCompleted === true,
 			isImportant: task.isImportant === true,
 			tags: task.tags,
+			completedAt: task.completedAt,
 			status: ["todo", "in-progress", "done"].includes(task.status) ? task.status : undefined,
 			createdAt: typeof task.createdAt === "string" ? task.createdAt : undefined,
 		}));
@@ -419,11 +517,19 @@ function parseLocalDateString(dateString) {
 	return new Date(year, month - 1, day);
 }
 
+function shiftDateString(dateString, offset) {
+	const date = parseLocalDateString(dateString);
+	date.setDate(date.getDate() + offset);
+	return getLocalDateString(date);
+}
+
 const tasks = loadTasks();
 const subjects = loadSubjects();
 const scheduleEntries = loadScheduleEntries();
+const activityDates = loadActivityDates();
 const pageViewButtons = [...document.querySelectorAll("[data-view-button]")];
 const pageViews = [...document.querySelectorAll("[data-page-view]")];
+const analyticsView = document.querySelector("#analytics-view");
 const subjectList = document.querySelector("#subject-list");
 const subjectAddButton = document.querySelector("#subject-add");
 const subjectDialog = document.querySelector("#subject-dialog");
@@ -439,6 +545,8 @@ const scheduleFormTitle = document.querySelector("#schedule-dialog-title");
 const scheduleDialogCancel = document.querySelector("#schedule-cancel");
 const taskDialogCancel = document.querySelector("#task-cancel");
 const themeToggle = document.querySelector("#theme-toggle");
+const streakBadge = document.querySelector("#streak-badge");
+const streakCount = document.querySelector("#streak-count");
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 const menuOpenButton = document.querySelector("#menu-open");
 const menuCloseButton = document.querySelector("#menu-close");
@@ -526,6 +634,13 @@ const timerCompletionStatus = document.querySelector("#timer-completion-status")
 const timerStartButton = document.querySelector("#timer-start");
 const timerPauseButton = document.querySelector("#timer-pause");
 const timerResetButton = document.querySelector("#timer-reset");
+const analyticsWeekCount = document.querySelector("#analytics-week-count");
+const analyticsWeekRange = document.querySelector("#analytics-week-range");
+const analyticsMonthCount = document.querySelector("#analytics-month-count");
+const analyticsMonthRange = document.querySelector("#analytics-month-range");
+const analyticsStreakCount = document.querySelector("#analytics-streak-count");
+const analyticsTagChart = document.querySelector("#analytics-tag-chart");
+const analyticsWeekdayChart = document.querySelector("#analytics-weekday-chart");
 const taskStatistics = {
 	total: document.querySelector("#stats-total"),
 	completed: document.querySelector("#stats-completed"),
@@ -677,12 +792,16 @@ function finishTimer() {
 	const task = tasks.find((item) => item.id === timerState.taskId);
 	let message = "Фокус-сессия завершена. Отличная работа!";
 	if (task && !task.isCompleted) {
-		task.isCompleted = timerState.completionStatus === "done";
-		task.status = timerState.completionStatus;
+		if (timerState.completionStatus === "done") {
+			recordTaskCompletion(task);
+		} else {
+			task.status = "in-progress";
+		}
 		saveTasks();
 		renderCalendar();
 		renderTasks();
 		renderReminder(false);
+		renderAnalytics();
 		message = `Таймер завершён: «${task.title}» — ${timerState.completionStatus === "done" ? "выполнено" : "в работе"}.`;
 		if (task.isCompleted) launchConfetti();
 	} else if (task?.isCompleted) {
@@ -932,6 +1051,7 @@ function switchPage(pageName) {
 	if (pageName === "subjects") renderSubjectList();
 	if (pageName === "schedule") renderSchedule();
 	if (pageName === "timer") renderTimer();
+	if (pageName === "analytics") renderAnalytics();
 }
 
 function closeSidePanel() {
@@ -1129,6 +1249,7 @@ exportDataButton.addEventListener("click", () => {
 		tasks,
 		subjects,
 		schedule: scheduleEntries,
+		activityDates,
 	};
 	const file = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
 	const downloadUrl = URL.createObjectURL(file);
@@ -1601,11 +1722,17 @@ function createTaskElement(task) {
 	completeCheckbox.type = "checkbox";
 	completeCheckbox.checked = task.isCompleted;
 	completeCheckbox.addEventListener("change", () => {
-		task.isCompleted = completeCheckbox.checked;
-		task.status = task.isCompleted ? "done" : "todo";
+		if (completeCheckbox.checked) {
+			recordTaskCompletion(task);
+		} else {
+			task.isCompleted = false;
+			task.status = "todo";
+			task.completedAt = null;
+		}
 		saveTasks();
 		renderReminder(false);
 		updateTaskStatistics();
+		renderAnalytics();
 		if (task.isCompleted) {
 			completeCheckbox.disabled = true;
 			item.classList.add("is-completing");
@@ -1833,10 +1960,98 @@ function updateTaskStatistics() {
 		: "Нет";
 }
 
+function createAnalyticsBar(labelText, count, maxCount, color, className = "") {
+	const row = document.createElement("div");
+	row.className = `analytics-bar ${className}`.trim();
+	const heading = document.createElement("div");
+	heading.className = "analytics-bar__heading";
+	const label = document.createElement("span");
+	label.className = "analytics-bar__label";
+	label.textContent = labelText;
+	const value = document.createElement("strong");
+	value.className = "analytics-bar__value";
+	value.textContent = String(count);
+	heading.append(label, value);
+	const track = document.createElement("div");
+	track.className = "analytics-bar__track";
+	track.setAttribute("aria-hidden", "true");
+	const fill = document.createElement("span");
+	fill.className = "analytics-bar__fill";
+	fill.style.setProperty("--bar-width", `${maxCount ? Math.max(count > 0 ? 3 : 0, count / maxCount * 100) : 0}%`);
+	fill.style.setProperty("--bar-color", color);
+	track.append(fill);
+	row.append(heading, track);
+	row.setAttribute("aria-label", `${labelText}: ${count}`);
+	return row;
+}
+
+function renderAnalytics() {
+	if (!analyticsTagChart) return;
+	const today = getLocalDateString(new Date());
+	const todayDate = parseLocalDateString(today);
+	const weekday = (todayDate.getDay() + 6) % 7;
+	const weekStart = shiftDateString(today, -weekday);
+	const monthStart = `${today.slice(0, 7)}-01`;
+	const completions = tasks
+		.filter((task) => task.isCompleted && getTaskCompletionDate(task))
+		.map((task) => ({ task, date: getTaskCompletionDate(task) }));
+	const weeklyCompletions = completions.filter(({ date }) => date >= weekStart && date <= today);
+	const monthlyCompletions = completions.filter(({ date }) => date >= monthStart && date <= today);
+	const shortDate = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
+	analyticsWeekCount.textContent = String(weeklyCompletions.length);
+	analyticsWeekRange.textContent = `${shortDate.format(parseLocalDateString(weekStart))} — ${shortDate.format(todayDate)}`;
+	analyticsMonthCount.textContent = String(monthlyCompletions.length);
+	analyticsMonthRange.textContent = new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(todayDate);
+	analyticsStreakCount.textContent = `🔥 ${getStreakLabel(getStreakCount())}`;
+
+	const taggedCompletions = new Map();
+	let untaggedCount = 0;
+	for (const { task } of monthlyCompletions) {
+		if (task.tags.length === 0) {
+			untaggedCount += 1;
+			continue;
+		}
+		for (const tag of task.tags) {
+			const key = tag.name.toLocaleLowerCase("ru-RU");
+			const existing = taggedCompletions.get(key) ?? { name: tag.name, color: tag.color, count: 0 };
+			existing.count += 1;
+			taggedCompletions.set(key, existing);
+		}
+	}
+	const tagRows = [...taggedCompletions.values()].sort((first, second) => second.count - first.count);
+	if (untaggedCount) tagRows.push({ name: "Без тега", color: "#829087", count: untaggedCount });
+	analyticsTagChart.replaceChildren();
+	if (tagRows.length === 0) {
+		const empty = document.createElement("p");
+		empty.className = "analytics-empty";
+		empty.textContent = "В этом месяце пока нет завершённых задач.";
+		analyticsTagChart.append(empty);
+	} else {
+		const maxTagCount = Math.max(...tagRows.map((tag) => tag.count));
+		for (const tag of tagRows) analyticsTagChart.append(createAnalyticsBar(tag.name, tag.count, maxTagCount, tag.color));
+	}
+
+	const rangeStart = shiftDateString(today, -27);
+	const weekdayCounts = Array(7).fill(0);
+	for (const { date } of completions) {
+		if (date < rangeStart || date > today) continue;
+		const dateWeekday = (parseLocalDateString(date).getDay() + 6) % 7;
+		weekdayCounts[dateWeekday] += 1;
+	}
+	const weekdayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+	const maxWeekdayCount = Math.max(...weekdayCounts);
+	analyticsWeekdayChart.replaceChildren();
+	weekdayCounts.forEach((count, index) => {
+		analyticsWeekdayChart.append(createAnalyticsBar(weekdayNames[index], count, maxWeekdayCount, "#50bd66", "analytics-bar--weekday"));
+	});
+}
+
 function renderTasks() {
 	taskList.replaceChildren();
 	for (const column of taskBoardColumns) column.replaceChildren();
 	updateTaskStatistics();
+	renderStreak();
+	renderAnalytics();
 	updateSubjectSelectors();
 	updateTaskTagFilter();
 	updateTimerTargetOptions();
@@ -2038,6 +2253,17 @@ taskForm.addEventListener("submit", (event) => {
 
 updateSubjectSelectors();
 updateTaskFormValidation();
+syncActivityDatesFromTasks();
+renderStreak();
+window.setInterval(() => {
+	renderStreak();
+	if (!analyticsView.hidden) renderAnalytics();
+}, 60_000);
+document.addEventListener("visibilitychange", () => {
+	if (document.visibilityState !== "visible") return;
+	renderStreak();
+	if (!analyticsView.hidden) renderAnalytics();
+});
 renderSubjectList();
 renderSchedule();
 renderCalendar();

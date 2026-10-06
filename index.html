@@ -45,6 +45,10 @@
       </svg>
     </button>
     <h1>College Control Center</h1>
+    <output class="streak-badge" id="streak-badge" aria-label="Текущая серия активности: 0 дней" title="Выполняйте хотя бы одну задачу каждый день">
+      <span aria-hidden="true">🔥</span>
+      <span id="streak-count">0 дней</span>
+    </output>
     <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false" title="Переключить тему">
       <svg class="theme-toggle__sun" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
         <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" />
@@ -68,6 +72,7 @@
     <nav class="side-panel__links" aria-label="Основная навигация">
       <a href="#tasks-view" data-menu-page="tasks" data-menu-scroll="#tasks-title">Задачи</a>
       <a href="#timer-view" data-menu-page="timer" data-menu-scroll="#timer-title">Таймер</a>
+      <a href="#analytics-view" data-menu-page="analytics" data-menu-scroll="#analytics-title">Статистика</a>
       <a href="#calendar-title" data-menu-page="tasks" data-menu-scroll="#calendar-title">Календарь</a>
       <a href="#subjects-view" data-menu-page="subjects">Предметы</a>
       <a href="#schedule-view" data-menu-page="schedule">Расписание</a>
@@ -78,6 +83,7 @@
   <nav class="app-navigation" aria-label="Разделы">
     <button type="button" data-view-button="tasks" aria-pressed="true">Задачи</button>
     <button type="button" data-view-button="timer" aria-pressed="false">Таймер</button>
+    <button type="button" data-view-button="analytics" aria-pressed="false">Статистика</button>
     <button type="button" data-view-button="subjects" aria-pressed="false">Предметы</button>
     <button type="button" data-view-button="schedule" aria-pressed="false">Расписание</button>
   </nav>
@@ -243,6 +249,45 @@
         </div>
         <p class="timer-status" id="timer-status" role="status" aria-live="polite"></p>
       </section>
+    </section>
+
+    <section class="page-view analytics-view" id="analytics-view" data-page-view="analytics" hidden aria-labelledby="analytics-title">
+      <div class="page-view__header">
+        <div>
+          <h2 id="analytics-title">Статистика</h2>
+          <p class="analytics-view__description">Ваш прогресс и ритм продуктивности.</p>
+        </div>
+      </div>
+      <section class="analytics-summary" aria-label="Выполненные задачи">
+        <article class="analytics-stat-card">
+          <span class="analytics-stat-card__label">За эту неделю</span>
+          <strong class="analytics-stat-card__value" id="analytics-week-count">0</strong>
+          <span class="analytics-stat-card__detail" id="analytics-week-range"></span>
+        </article>
+        <article class="analytics-stat-card">
+          <span class="analytics-stat-card__label">За этот месяц</span>
+          <strong class="analytics-stat-card__value" id="analytics-month-count">0</strong>
+          <span class="analytics-stat-card__detail" id="analytics-month-range"></span>
+        </article>
+        <article class="analytics-stat-card analytics-stat-card--streak">
+          <span class="analytics-stat-card__label">Текущий стрик</span>
+          <strong class="analytics-stat-card__value" id="analytics-streak-count">🔥 0 дней</strong>
+          <span class="analytics-stat-card__detail">Дни с завершёнными задачами подряд</span>
+        </article>
+      </section>
+      <div class="analytics-charts">
+        <section class="analytics-card" aria-labelledby="analytics-tags-title">
+          <h3 id="analytics-tags-title">Выполненные задачи по тегам</h3>
+          <p class="analytics-card__description">Текущий месяц · без тегов отдельно; задача с несколькими тегами учитывается в каждом</p>
+          <div class="analytics-bars" id="analytics-tag-chart" role="img" aria-label="Распределение выполненных задач по тегам за текущий месяц"></div>
+        </section>
+        <section class="analytics-card" aria-labelledby="analytics-weekdays-title">
+          <h3 id="analytics-weekdays-title">Активность по дням недели</h3>
+          <p class="analytics-card__description">Завершённые задачи за последние 28 дней</p>
+          <div class="analytics-weekday-chart" id="analytics-weekday-chart" role="img" aria-label="Количество завершённых задач по дням недели за последние 28 дней"></div>
+        </section>
+      </div>
+      <p class="analytics-note">История активности и статистика ведутся с момента включения учёта. Для ранее выполненных задач без даты завершения прошлые данные восстановить нельзя.</p>
     </section>
 
     <section class="page-view" id="subjects-view" data-page-view="subjects" hidden aria-labelledby="subjects-title">
