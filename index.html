@@ -49,7 +49,40 @@
       <span aria-hidden="true">🔥</span>
       <span id="streak-count">0 дней</span>
     </output>
-    <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Включить тёмную тему" aria-pressed="false" title="Переключить тему">
+    <details class="theme-picker" id="theme-picker">
+      <summary class="theme-picker__trigger" aria-label="Выбрать тему" title="Выбрать тему">
+        <span aria-hidden="true">🎨</span>
+        <span class="theme-picker__trigger-label">Тема</span>
+      </summary>
+      <div class="theme-picker__menu" aria-label="Цветовые темы">
+        <p class="theme-picker__title">Выберите тему</p>
+        <button class="theme-picker__option" type="button" data-theme-choice="dark" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#17181c;--swatch-accent:#9b8cff" aria-hidden="true"></span>
+          <span>Dark</span><span class="theme-picker__hint">Угольная</span>
+        </button>
+        <button class="theme-picker__option" type="button" data-theme-choice="light" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#f3f7f2;--swatch-accent:#50bd66" aria-hidden="true"></span>
+          <span>Light</span><span class="theme-picker__hint">Чистая</span>
+        </button>
+        <button class="theme-picker__option" type="button" data-theme-choice="dracula" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#282a36;--swatch-accent:#bd93f9" aria-hidden="true"></span>
+          <span>Dracula / Nord</span><span class="theme-picker__hint">Лавандовая</span>
+        </button>
+        <button class="theme-picker__option" type="button" data-theme-choice="cyberpunk" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#100b1f;--swatch-accent:#f6f000" aria-hidden="true"></span>
+          <span>Cyberpunk</span><span class="theme-picker__hint">Неоновая</span>
+        </button>
+        <button class="theme-picker__option" type="button" data-theme-choice="matcha" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#edf1e7;--swatch-accent:#709b74" aria-hidden="true"></span>
+          <span>Matcha</span><span class="theme-picker__hint">Шалфейная</span>
+        </button>
+        <button class="theme-picker__option" type="button" data-theme-choice="sunset" aria-pressed="false">
+          <span class="theme-picker__swatch" style="--swatch-main:#fff5ef;--swatch-accent:#f08b72" aria-hidden="true"></span>
+          <span>Sunset / Pastel</span><span class="theme-picker__hint">Персиковая</span>
+        </button>
+      </div>
+    </details>
+    <button class="icon-button theme-toggle" id="theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false" title="Быстро переключить светлую и тёмную темы" hidden>
       <svg class="theme-toggle__sun" aria-hidden="true" viewBox="0 0 24 24" width="22" height="22">
         <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2" />
         <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2" />

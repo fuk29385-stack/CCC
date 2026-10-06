@@ -1,7 +1,16 @@
 const STORAGE_KEY = "college-control-center.tasks";
 const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
-const THEME_STORAGE_KEY = "college-control-center.theme";
+const THEME_STORAGE_KEY = "app-theme";
+const LEGACY_THEME_STORAGE_KEY = "college-control-center.theme";
+const THEME_PRESETS = {
+	dark: { mode: "dark", color: "#17181c" },
+	light: { mode: "light", color: "#18352d" },
+	dracula: { mode: "dark", color: "#282a36" },
+	cyberpunk: { mode: "dark", color: "#100b1f" },
+	matcha: { mode: "light", color: "#edf1e7" },
+	sunset: { mode: "light", color: "#fff5ef" },
+};
 const TIMER_STORAGE_KEY = "college-control-center.timer";
 const ACTIVITY_STORAGE_KEY = "college-control-center.activity-dates";
 const CONTACT_ACCESS_KEY = "c7a33ed6-fa8e-42be-add3-76cf18b1f359";
@@ -191,15 +200,18 @@ function saveStoredList(key, value) {
 }
 
 function applyTheme(theme, savePreference = false) {
-	const normalizedTheme = theme === "dark" ? "dark" : "light";
-	document.documentElement.dataset.theme = normalizedTheme;
-	themeToggle.setAttribute("aria-pressed", String(normalizedTheme === "dark"));
-	themeToggle.setAttribute("aria-label", `Включить ${normalizedTheme === "dark" ? "светлую" : "тёмную"} тему`);
-	themeColorMeta.content = normalizedTheme === "dark" ? "#101914" : "#18352d";
+	const selectedTheme = THEME_PRESETS[theme] ? theme : "light";
+	const root = document.documentElement;
+	root.dataset.theme = THEME_PRESETS[selectedTheme].mode;
+	root.dataset.themePalette = selectedTheme;
+	for (const button of themeChoiceButtons) {
+		button.setAttribute("aria-pressed", String(button.dataset.themeChoice === selectedTheme));
+	}
+	themeColorMeta.content = THEME_PRESETS[selectedTheme].color;
 
 	if (savePreference) {
 		try {
-			localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme);
+			localStorage.setItem(THEME_STORAGE_KEY, selectedTheme);
 		} catch (error) {
 			console.error("Не удалось сохранить тему.", error);
 		}
@@ -209,7 +221,13 @@ function applyTheme(theme, savePreference = false) {
 function getSavedTheme() {
 	try {
 		const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-		return savedTheme === "light" || savedTheme === "dark" ? savedTheme : null;
+		if (THEME_PRESETS[savedTheme]) return savedTheme;
+		const legacyTheme = localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
+		if (legacyTheme === "light" || legacyTheme === "dark") {
+			localStorage.setItem(THEME_STORAGE_KEY, legacyTheme);
+			return legacyTheme;
+		}
+		return null;
 	} catch (error) {
 		console.error("Не удалось прочитать выбранную тему.", error);
 		return null;
@@ -544,7 +562,8 @@ const scheduleForm = document.querySelector("#schedule-form");
 const scheduleFormTitle = document.querySelector("#schedule-dialog-title");
 const scheduleDialogCancel = document.querySelector("#schedule-cancel");
 const taskDialogCancel = document.querySelector("#task-cancel");
-const themeToggle = document.querySelector("#theme-toggle");
+const themePicker = document.querySelector("#theme-picker");
+const themeChoiceButtons = [...document.querySelectorAll("[data-theme-choice]")];
 const streakBadge = document.querySelector("#streak-badge");
 const streakCount = document.querySelector("#streak-count");
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
@@ -1306,9 +1325,14 @@ if ("serviceWorker" in navigator && window.isSecureContext) {
 
 const systemThemeQuery = window.matchMedia("(prefers-color-scheme: dark)");
 applyTheme(getSavedTheme() ?? (systemThemeQuery.matches ? "dark" : "light"));
-themeToggle.addEventListener("click", () => {
-	const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-	applyTheme(nextTheme, true);
+for (const button of themeChoiceButtons) {
+	button.addEventListener("click", () => {
+		applyTheme(button.dataset.themeChoice, true);
+		themePicker.open = false;
+	});
+}
+themePicker.addEventListener("keydown", (event) => {
+	if (event.key === "Escape") themePicker.open = false;
 });
 systemThemeQuery.addEventListener("change", (event) => {
 	if (!getSavedTheme()) applyTheme(event.matches ? "dark" : "light");

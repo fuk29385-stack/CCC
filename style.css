@@ -1,29 +1,36 @@
 :root {
 	color-scheme: light;
 	font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-	color: var(--color-text);
-	background: var(--color-page);
+	color: var(--text-primary);
+	background: var(--bg-main);
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
+	--bg-main: #f3f7f2;
+	--bg-card: #ffffff;
+	--text-primary: #18352d;
+	--text-secondary: #5c6e63;
+	--accent: #50bd66;
+	--border: #dce6dc;
 	--color-ink: #18352d;
-	--color-text: #18352d;
-	--color-page: #f3f7f2;
-	--color-muted: #5c6e63;
-	--color-line: #dce6dc;
-	--color-surface: #ffffff;
-	--color-accent: #50bd66;
+	--color-text: var(--text-primary);
+	--color-page: var(--bg-main);
+	--color-muted: var(--text-secondary);
+	--color-line: var(--border);
+	--color-surface: var(--bg-card);
+	--color-accent: var(--accent);
 	--color-status-progress: #a5641b;
 	--color-status-done: #348148;
 }
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
-	--color-text: #e5efe8;
-	--color-page: #101914;
-	--color-muted: #b5c5bb;
-	--color-line: #3b4c42;
-	--color-surface: #1b2a22;
-	--color-accent: #69d183;
+	--bg-main: #17181c;
+	--bg-card: #22242a;
+	--text-primary: #e9e9ef;
+	--text-secondary: #a9aab4;
+	--accent: #9b8cff;
+	--border: #3a3c45;
+	--color-ink: #121318;
 	--color-status-progress: #e3b35f;
 	--color-status-done: #79cf8b;
 }
@@ -2157,5 +2164,418 @@ main {
 		gap: 0.2rem;
 		padding: 0.35rem 0.45rem;
 		font-size: 0.78rem;
+	}
+}
+
+:root[data-theme-palette="light"] {
+	--bg-main: #f3f7f2;
+	--bg-card: #ffffff;
+	--text-primary: #18352d;
+	--text-secondary: #5c6e63;
+	--accent: #50bd66;
+	--border: #dce6dc;
+	--color-ink: #18352d;
+	--color-status-progress: #a5641b;
+	--color-status-done: #348148;
+	color-scheme: light;
+}
+
+:root[data-theme-palette="dracula"] {
+	--bg-main: #282a36;
+	--bg-card: #343746;
+	--text-primary: #f8f8f2;
+	--text-secondary: #c4c6d1;
+	--accent: #bd93f9;
+	--border: #494c5d;
+	--color-ink: #211d2b;
+	--color-status-progress: #ffb86c;
+	--color-status-done: #8be9a8;
+}
+
+:root[data-theme-palette="cyberpunk"] {
+	--bg-main: #100b1f;
+	--bg-card: #1c1230;
+	--text-primary: #fff1ff;
+	--text-secondary: #c9b8d8;
+	--accent: #f6f000;
+	--border: #4a2d61;
+	--color-ink: #181224;
+	--color-status-progress: #ff9e64;
+	--color-status-done: #74fbd3;
+}
+
+:root[data-theme-palette="matcha"] {
+	--bg-main: #edf1e7;
+	--bg-card: #f8faf5;
+	--text-primary: #28372c;
+	--text-secondary: #657568;
+	--accent: #709b74;
+	--border: #d6dfd0;
+	--color-ink: #24392c;
+	--color-status-progress: #a5641b;
+	--color-status-done: #4c8054;
+	color-scheme: light;
+}
+
+:root[data-theme-palette="sunset"] {
+	--bg-main: #fff5ef;
+	--bg-card: #fffaf6;
+	--text-primary: #4b2d31;
+	--text-secondary: #80666a;
+	--accent: #f08b72;
+	--border: #f0d9d0;
+	--color-ink: #493039;
+	--color-status-progress: #b46c35;
+	--color-status-done: #568269;
+	color-scheme: light;
+}
+
+body,
+.app-header,
+.app-navigation,
+.app-tools,
+.app-navigation button,
+.app-tools__button,
+.page-view__header,
+.task-dashboard,
+.task-statistics,
+.task-statistic,
+.task-filter-buttons button,
+.task-search input,
+.task-subject select,
+.task-tag-filter select,
+.task-item,
+.task-item__action,
+.task-item__complete,
+.task-board__column,
+.calendar__today,
+.calendar__month-button,
+.calendar__day,
+.subject-item,
+.schedule-table td,
+.schedule-table th,
+.schedule-lesson,
+.task-dialog,
+.side-panel,
+.task-form > input,
+.task-form > select,
+.task-form > textarea,
+.task-form footer button,
+.timer-card,
+.timer-duration input,
+.timer-select select,
+.timer-button,
+.timer-clock,
+.analytics-stat-card,
+.analytics-card,
+.theme-picker__menu,
+.theme-picker__option {
+	transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.theme-picker {
+	position: relative;
+	flex: 0 0 auto;
+}
+
+.theme-picker__trigger {
+	display: flex;
+	min-height: 2.75rem;
+	align-items: center;
+	gap: 0.4rem;
+	padding: 0.4rem 0.7rem;
+	border: 1px solid rgb(255 255 255 / 22%);
+	border-radius: 7px;
+	color: #f5fff4;
+	background: rgb(255 255 255 / 8%);
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	list-style: none;
+	white-space: nowrap;
+}
+
+.theme-picker__trigger::-webkit-details-marker {
+	display: none;
+}
+
+.theme-picker__trigger:hover,
+.theme-picker[open] .theme-picker__trigger {
+	background: rgb(255 255 255 / 16%);
+}
+
+.theme-picker__menu {
+	position: absolute;
+	z-index: 20;
+	top: calc(100% + 0.6rem);
+	right: 0;
+	display: grid;
+	width: min(20rem, calc(100vw - 1.5rem));
+	gap: 0.3rem;
+	padding: 0.7rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	color: var(--text-primary);
+	background: var(--bg-card);
+	box-shadow: 0 16px 40px rgb(0 0 0 / 24%);
+}
+
+.theme-picker__title {
+	margin: 0;
+	padding: 0.35rem 0.55rem 0.5rem;
+	color: var(--text-secondary);
+	font-size: 0.8rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.theme-picker__option {
+	display: grid;
+	grid-template-columns: 1.8rem minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 0.65rem;
+	min-height: 2.75rem;
+	padding: 0.45rem 0.55rem;
+	border: 1px solid transparent;
+	border-radius: 6px;
+	color: var(--text-primary);
+	background: transparent;
+	text-align: left;
+	cursor: pointer;
+}
+
+.theme-picker__option:hover {
+	border-color: var(--border);
+	background: color-mix(in srgb, var(--accent) 12%, var(--bg-card));
+}
+
+.theme-picker__option[aria-pressed="true"] {
+	border-color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 16%, var(--bg-card));
+}
+
+.theme-picker__swatch {
+	width: 1.6rem;
+	height: 1.6rem;
+	border: 1px solid var(--border);
+	border-radius: 50%;
+	background: linear-gradient(135deg, var(--swatch-main) 0 62%, var(--swatch-accent) 62% 100%);
+	box-shadow: inset 0 0 0 2px rgb(255 255 255 / 14%);
+}
+
+.theme-picker__hint {
+	color: var(--text-secondary);
+	font-size: 0.76rem;
+}
+
+:root[data-theme-palette="sunset"] body {
+	background-image: linear-gradient(145deg, #fff5ef 0%, #fff1e8 52%, #fce7e0 100%);
+}
+
+:root:not([data-theme-palette="sunset"]) body {
+	background-image: none;
+}
+
+.timer-clock {
+	border-color: var(--accent);
+	color: var(--text-primary);
+	background: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 28%, var(--bg-card)), var(--bg-card) 78%);
+}
+
+.timer-clock__caption {
+	color: var(--text-secondary);
+}
+
+.timer-clock.is-complete {
+	border-color: var(--color-status-done);
+	background: radial-gradient(ellipse at top, color-mix(in srgb, var(--color-status-done) 35%, var(--bg-card)), var(--bg-card) 78%);
+}
+
+.streak-badge {
+	border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+	background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.reminder-banner {
+	border-color: var(--accent);
+	color: var(--text-primary);
+	background: var(--bg-card);
+}
+
+:root[data-theme="light"] .app-navigation button[aria-pressed="true"],
+:root[data-theme="light"] .app-navigation button:hover:not([aria-pressed="true"]),
+:root[data-theme="light"] .task-filter-buttons button:hover:not([aria-pressed="true"]),
+:root[data-theme="light"] .app-tools__button:hover {
+	background: color-mix(in srgb, var(--accent) 13%, var(--bg-card));
+}
+
+:root[data-theme="light"] .app-navigation button[aria-pressed="true"] {
+	color: var(--text-primary);
+}
+
+:root[data-theme="light"] .task-filter-buttons button[aria-pressed="true"] {
+	border-color: var(--accent);
+	color: var(--text-primary);
+	background: color-mix(in srgb, var(--accent) 20%, var(--bg-card));
+}
+
+:root[data-theme="light"] .task-form > input,
+:root[data-theme="light"] .task-form > select,
+:root[data-theme="light"] .task-form > textarea,
+:root[data-theme="light"] .task-search input,
+:root[data-theme="light"] .task-subject select,
+:root[data-theme="light"] .task-tag-filter select,
+:root[data-theme="light"] .task-tag-create input[type="text"],
+:root[data-theme="light"] .timer-duration input,
+:root[data-theme="light"] .timer-select select {
+	border-color: var(--border);
+	color: var(--text-primary);
+	background: var(--bg-main);
+}
+
+:root[data-theme="light"] .task-form > label,
+:root[data-theme="light"] .task-tag-editor legend {
+	color: var(--text-secondary);
+}
+
+:root[data-theme="light"] .task-item.is-completed {
+	background: color-mix(in srgb, var(--bg-main) 68%, var(--bg-card));
+}
+
+:root[data-theme="light"] .task-form footer button[type="submit"],
+:root[data-theme="light"] .primary-button,
+:root[data-theme="light"] .empty-state__button,
+:root[data-theme="light"] .timer-button--primary {
+	border-color: var(--accent);
+	color: #18352d;
+	background: var(--accent);
+}
+
+:root[data-theme="dark"] .app-header {
+	color: var(--text-primary);
+	background: var(--bg-card);
+	border-bottom: 1px solid var(--border);
+}
+
+:root[data-theme="dark"] .app-navigation,
+:root[data-theme="dark"] .app-tools,
+:root[data-theme="dark"] .task-item,
+:root[data-theme="dark"] .subject-item,
+:root[data-theme="dark"] .calendar__today,
+:root[data-theme="dark"] .calendar__month-button,
+:root[data-theme="dark"] .task-item__action,
+:root[data-theme="dark"] .analytics-stat-card,
+:root[data-theme="dark"] .analytics-card {
+	background: var(--bg-card);
+}
+
+:root[data-theme="dark"] .app-navigation button[aria-pressed="true"],
+:root[data-theme="dark"] .task-filter-buttons button[aria-pressed="true"] {
+	border-color: var(--accent);
+	color: var(--color-ink);
+	background: var(--accent);
+}
+
+:root[data-theme="dark"] .app-navigation button:hover:not([aria-pressed="true"]),
+:root[data-theme="dark"] .calendar__today:hover,
+:root[data-theme="dark"] .calendar__month-button:hover,
+:root[data-theme="dark"] .calendar__day:hover:not(.is-selected),
+:root[data-theme="dark"] .task-filter-buttons button:hover:not([aria-pressed="true"]),
+:root[data-theme="dark"] .app-tools__button:hover,
+:root[data-theme="dark"] .side-panel__links a:hover,
+:root[data-theme="dark"] .schedule-day__add:hover {
+	background: color-mix(in srgb, var(--accent) 14%, var(--bg-card));
+}
+
+:root[data-theme="dark"] .app-tools__button,
+:root[data-theme="dark"] .task-dialog,
+:root[data-theme="dark"] .side-panel,
+:root[data-theme="dark"] .task-form footer button,
+:root[data-theme="dark"] .task-item__action {
+	border-color: var(--border);
+	color: var(--text-primary);
+	background: var(--bg-card);
+}
+
+:root[data-theme="dark"] .task-form > label,
+:root[data-theme="dark"] .task-tag-editor legend {
+	color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .task-form > input,
+:root[data-theme="dark"] .task-form > select,
+:root[data-theme="dark"] .task-form > textarea,
+:root[data-theme="dark"] .task-search input,
+:root[data-theme="dark"] .task-subject select,
+:root[data-theme="dark"] .task-tag-filter select,
+:root[data-theme="dark"] .task-tag-create input[type="text"],
+:root[data-theme="dark"] .timer-duration input,
+:root[data-theme="dark"] .timer-select select,
+:root[data-theme="dark"] .timer-button--secondary {
+	border-color: var(--border);
+	color: var(--text-primary);
+	background: var(--bg-main);
+}
+
+:root[data-theme="dark"] .task-form footer button[type="submit"],
+:root[data-theme="dark"] .primary-button,
+:root[data-theme="dark"] .empty-state__button,
+:root[data-theme="dark"] .timer-button--primary {
+	border-color: var(--accent);
+	color: var(--color-ink);
+	background: var(--accent);
+}
+
+:root[data-theme="dark"] .calendar__day {
+	color: var(--text-primary);
+	background: var(--bg-card);
+}
+
+:root[data-theme="dark"] .calendar__day.is-outside-month,
+:root[data-theme="dark"] .task-item.is-completed {
+	color: var(--text-secondary);
+	background: color-mix(in srgb, var(--bg-main) 65%, var(--bg-card));
+}
+
+:root[data-theme="dark"] .task-item.is-overdue {
+	border-color: color-mix(in srgb, #ff766f 65%, var(--border));
+	background: color-mix(in srgb, #ff766f 12%, var(--bg-card));
+}
+
+:root[data-theme="dark"] .calendar__day.is-selected {
+	color: var(--color-ink);
+	background: var(--accent);
+}
+
+:root[data-theme="dark"] .task-item__subject {
+	color: var(--text-primary);
+	background: color-mix(in srgb, var(--subject-color, var(--accent)) 30%, var(--bg-main));
+}
+
+:root[data-theme="dark"] .schedule-table th,
+:root[data-theme="dark"] .schedule-table td,
+:root[data-theme="dark"] .schedule-lesson {
+	color: var(--text-primary);
+	background: var(--bg-card);
+}
+
+:root[data-theme="dark"] .schedule-day__add {
+	border-color: var(--border);
+	color: var(--accent);
+}
+
+:root[data-theme="light"] .theme-picker__trigger {
+	border-color: rgb(255 255 255 / 22%);
+	color: #f5fff4;
+	background: rgb(255 255 255 / 8%);
+}
+
+@media (max-width: 480px) {
+	.theme-picker__trigger {
+		min-height: 2.5rem;
+		gap: 0.2rem;
+		padding-inline: 0.4rem;
+		font-size: 0.76rem;
 	}
 }
