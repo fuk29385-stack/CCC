@@ -2,10 +2,78 @@ const STORAGE_KEY = "college-control-center.tasks";
 const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";
 const THEME_STORAGE_KEY = "college-control-center.theme";
+const TIMER_STORAGE_KEY = "college-control-center.timer";
 const CONTACT_ACCESS_KEY = "c7a33ed6-fa8e-42be-add3-76cf18b1f359";
 const CONTACT_COOLDOWN_KEY = "college-control-center.contact-last-submit";
 const CONTACT_COOLDOWN_MS = 30_000;
+const TIMER_DEFAULT_SECONDS = 25 * 60;
+const TIMER_MAX_SECONDS = 24 * 60 * 60;
 const SUBJECT_COLORS = ["#50bd66", "#4a90d9", "#df8750", "#9a70c5", "#d45b66", "#3a9c9a"];
+const TASK_TAG_PRESETS = [
+	{ name: "ДЗ", color: "#df8750" },
+	{ name: "Самообразование", color: "#4a90d9" },
+	{ name: "Работа", color: "#9a70c5" },
+];
+
+function normalizeTaskTags(tags) {
+	if (!Array.isArray(tags)) return [];
+	const seenNames = new Set();
+	return tags
+		.filter((tag) => tag && typeof tag.name === "string" && typeof tag.color === "string")
+		.map((tag) => ({ name: tag.name.trim().slice(0, 40), color: tag.color }))
+		.filter((tag) => {
+			const normalizedName = tag.name.toLocaleLowerCase("ru-RU");
+			if (!tag.name || !/^#[0-9a-f]{6}$/i.test(tag.color) || seenNames.has(normalizedName)) return false;
+			seenNames.add(normalizedName);
+			return true;
+		})
+		.slice(0, 20);
+}
+
+function loadTimerState() {
+	let storedTimer;
+	try {
+		storedTimer = JSON.parse(localStorage.getItem(TIMER_STORAGE_KEY) ?? "null");
+	} catch (error) {
+		console.error("Не удалось загрузить состояние таймера из localStorage.", error);
+	}
+	if (!storedTimer || typeof storedTimer !== "object" || Array.isArray(storedTimer)) {
+		return {
+			durationSeconds: TIMER_DEFAULT_SECONDS,
+			remainingSeconds: TIMER_DEFAULT_SECONDS,
+			targetTimestamp: null,
+			isRunning: false,
+			isFinished: false,
+			taskId: "",
+			tagName: "",
+			completionStatus: "in-progress",
+		};
+	}
+
+	const durationSeconds = Number.isInteger(storedTimer.durationSeconds)
+		&& storedTimer.durationSeconds > 0 && storedTimer.durationSeconds <= TIMER_MAX_SECONDS
+		? storedTimer.durationSeconds
+		: TIMER_DEFAULT_SECONDS;
+	const remainingSeconds = Number.isInteger(storedTimer.remainingSeconds)
+		&& storedTimer.remainingSeconds >= 0 && storedTimer.remainingSeconds <= TIMER_MAX_SECONDS
+		? storedTimer.remainingSeconds
+		: durationSeconds;
+	const targetTimestamp = typeof storedTimer.targetTimestamp === "number" && Number.isFinite(storedTimer.targetTimestamp)
+		? storedTimer.targetTimestamp
+		: null;
+	const isRunning = storedTimer.isRunning === true && targetTimestamp !== null;
+
+	return {
+		durationSeconds,
+		remainingSeconds,
+		targetTimestamp,
+		isRunning,
+		isFinished: storedTimer.isFinished === true && remainingSeconds === 0,
+		taskId: typeof storedTimer.taskId === "string" ? storedTimer.taskId : "",
+		tagName: typeof storedTimer.tagName === "string" ? storedTimer.tagName : "",
+		completionStatus: storedTimer.completionStatus === "done" ? "done" : "in-progress",
+	};
+}
 
 function loadLastContactSubmission() {
 	try {
@@ -151,6 +219,18 @@ function renderReminder(showNotification = true) {
 
 function validateBackup(backup) {
 	const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+	const hasValidTags = (tags) => {
+		if (!Array.isArray(tags) || tags.length > 20) return false;
+		const names = new Set();
+		return tags.every((tag) => {
+			if (!isRecord(tag) || typeof tag.name !== "string" || !tag.name.trim() || tag.name.trim().length > 40
+				|| typeof tag.color !== "string" || !/^#[0-9a-f]{6}$/i.test(tag.color)) return false;
+			const normalizedName = tag.name.trim().toLocaleLowerCase("ru-RU");
+			if (names.has(normalizedName)) return false;
+			names.add(normalizedName);
+			return true;
+		});
+	};
 	if (!isRecord(backup) || backup.format !== "college-control-center" || backup.version !== 1) {
 		throw new Error("Файл не является резервной копией College Control Center версии 1.");
 	}
@@ -169,6 +249,7 @@ function validateBackup(backup) {
 			|| typeof task.description !== "string"
 			|| typeof task.isCompleted !== "boolean"
 			|| typeof task.isImportant !== "boolean"
+			|| (task.tags !== undefined && !hasValidTags(task.tags))
 			|| (task.status !== undefined && !["todo", "in-progress", "done"].includes(task.status))
 			|| (task.createdAt !== undefined && typeof task.createdAt !== "string")) {
 			throw new Error(`Задача №${index + 1} содержит некорректные данные.`);
@@ -252,6 +333,7 @@ class Task {
 		description = "",
 		isCompleted = false,
 		isImportant = false,
+		tags = [],
 		status = isCompleted ? "done" : "todo",
 		createdAt = new Date().toISOString(),
 	} = {}) {
@@ -262,6 +344,7 @@ class Task {
 		this.description = description;
 		this.isCompleted = isCompleted;
 		this.isImportant = isImportant;
+		this.tags = normalizeTaskTags(tags);
 		this.status = isCompleted ? "done" : status === "in-progress" ? "in-progress" : "todo";
 		this.createdAt = createdAt;
 	}
@@ -280,6 +363,7 @@ function loadTasks() {
 			description: typeof task.description === "string" ? task.description : "",
 			isCompleted: task.isCompleted === true,
 			isImportant: task.isImportant === true,
+			tags: task.tags,
 			status: ["todo", "in-progress", "done"].includes(task.status) ? task.status : undefined,
 			createdAt: typeof task.createdAt === "string" ? task.createdAt : undefined,
 		}));
@@ -422,9 +506,26 @@ const taskBoardColumns = [...document.querySelectorAll("[data-task-status]")];
 const tasksTitle = document.querySelector("#tasks-title");
 const taskSearchInput = document.querySelector("#task-search");
 const taskSubjectFilter = document.querySelector("#task-subject-filter");
+const taskTagFilter = document.querySelector("#task-tag-filter");
 const taskSubjectSelect = document.querySelector("#task-subject");
 const scheduleSubjectSelect = document.querySelector("#schedule-subject");
 const taskFilterButtons = [...document.querySelectorAll("[data-task-filter]")];
+const taskTagOptions = document.querySelector("#task-tag-options");
+const taskTagNameInput = document.querySelector("#task-tag-name");
+const taskTagColorInput = document.querySelector("#task-tag-color");
+const taskTagAddButton = document.querySelector("#task-tag-add");
+const timerDisplay = document.querySelector("#timer-display");
+const timerClock = document.querySelector("#timer-clock");
+const timerCaption = document.querySelector("#timer-caption");
+const timerStatus = document.querySelector("#timer-status");
+const timerMinutesInput = document.querySelector("#timer-minutes");
+const timerSecondsInput = document.querySelector("#timer-seconds");
+const timerSetDurationButton = document.querySelector("#timer-set-duration");
+const timerTargetSelect = document.querySelector("#timer-target");
+const timerCompletionStatus = document.querySelector("#timer-completion-status");
+const timerStartButton = document.querySelector("#timer-start");
+const timerPauseButton = document.querySelector("#timer-pause");
+const timerResetButton = document.querySelector("#timer-reset");
 const taskStatistics = {
 	total: document.querySelector("#stats-total"),
 	completed: document.querySelector("#stats-completed"),
@@ -435,6 +536,10 @@ const addTaskButton = document.querySelector(".add-task-button");
 const saveTaskButton = taskForm.querySelector('button[type="submit"]');
 const taskFields = ["title", "date", "subject"].map((name) => taskForm.elements.namedItem(name));
 const touchedFields = new Set();
+const timerState = loadTimerState();
+let selectedTaskTags = [];
+let timerInterval = null;
+let timerHasFinished = timerState.isFinished;
 const initialDate = new Date();
 let selectedDate = getLocalDateString(initialDate);
 let displayedMonth = new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
@@ -444,6 +549,229 @@ let editingTaskId = null;
 let editingSubjectId = null;
 let editingScheduleId = null;
 let returnToTaskAfterSubjectSave = false;
+
+function saveTimerState() {
+	try {
+		localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(timerState));
+	} catch (error) {
+		console.error("Не удалось сохранить состояние таймера.", error);
+	}
+}
+
+function formatTimerTime(totalSeconds) {
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getTaskTags() {
+	const tagsByName = new Map();
+	for (const tag of [...TASK_TAG_PRESETS, ...tasks.flatMap((task) => task.tags), ...selectedTaskTags]) {
+		const key = tag.name.toLocaleLowerCase("ru-RU");
+		if (!tagsByName.has(key)) tagsByName.set(key, tag);
+	}
+	return [...tagsByName.values()];
+}
+
+function renderTaskTagOptions() {
+	taskTagOptions.replaceChildren();
+	for (const tag of getTaskTags()) {
+		const label = document.createElement("label");
+		label.className = "task-tag-option";
+		const checkbox = document.createElement("input");
+		checkbox.type = "checkbox";
+		checkbox.checked = selectedTaskTags.some((selectedTag) => selectedTag.name === tag.name);
+		checkbox.addEventListener("change", () => {
+			if (checkbox.checked) {
+				selectedTaskTags = normalizeTaskTags([...selectedTaskTags, tag]);
+			} else {
+				selectedTaskTags = selectedTaskTags.filter((selectedTag) => selectedTag.name !== tag.name);
+			}
+		});
+		const mark = document.createElement("span");
+		mark.className = "task-tag";
+		mark.style.setProperty("--tag-color", tag.color);
+		mark.textContent = tag.name;
+		label.append(checkbox, mark);
+		taskTagOptions.append(label);
+	}
+}
+
+function updateTaskTagFilter() {
+	const selectedTag = taskTagFilter.value;
+	taskTagFilter.replaceChildren(new Option("Все теги", ""));
+	for (const tag of getTaskTags().filter((item) => tasks.some((task) => task.tags.some(
+		(taskTag) => taskTag.name.toLocaleLowerCase("ru-RU") === item.name.toLocaleLowerCase("ru-RU"),
+	)))) {
+		taskTagFilter.append(new Option(tag.name, tag.name));
+	}
+	if ([...taskTagFilter.options].some((option) => option.value === selectedTag)) {
+		taskTagFilter.value = selectedTag;
+	}
+}
+
+function updateTimerTargetOptions() {
+	const selectedValue = timerState.taskId ? `task:${timerState.taskId}` : timerState.tagName ? `tag:${timerState.tagName}` : "";
+	timerTargetSelect.replaceChildren(new Option("Без привязки", ""));
+	const taskGroup = document.createElement("optgroup");
+	taskGroup.label = "Задачи";
+	for (const task of tasks) {
+		const option = new Option(`${task.title}${task.isCompleted ? " (выполнена)" : ""}`, `task:${task.id}`);
+		option.disabled = task.isCompleted && task.id !== timerState.taskId;
+		taskGroup.append(option);
+	}
+	if (timerState.taskId && !tasks.some((task) => task.id === timerState.taskId)) {
+		taskGroup.append(new Option("Выбранная задача удалена", selectedValue));
+	}
+	if (taskGroup.children.length) timerTargetSelect.append(taskGroup);
+
+	const tagGroup = document.createElement("optgroup");
+	tagGroup.label = "Категории";
+	for (const tag of getTaskTags()) tagGroup.append(new Option(tag.name, `tag:${tag.name}`));
+	timerTargetSelect.append(tagGroup);
+	timerTargetSelect.value = selectedValue;
+}
+
+function updateTimerDurationInputs() {
+	timerMinutesInput.value = String(Math.floor(timerState.durationSeconds / 60));
+	timerSecondsInput.value = String(timerState.durationSeconds % 60);
+}
+
+function renderTimer() {
+	if (timerState.isRunning && timerState.targetTimestamp !== null) {
+		timerState.remainingSeconds = Math.max(0, Math.ceil((timerState.targetTimestamp - Date.now()) / 1000));
+	}
+	timerDisplay.textContent = formatTimerTime(timerState.remainingSeconds);
+	timerClock.setAttribute("aria-label", `Осталось ${formatTimerTime(timerState.remainingSeconds)}`);
+	timerClock.classList.toggle("is-complete", timerHasFinished);
+	timerCaption.textContent = timerHasFinished
+		? "Фокус-сессия завершена"
+		: timerState.isRunning
+			? "Идёт фокус-сессия"
+			: timerState.remainingSeconds === timerState.durationSeconds
+				? "Готов к фокус-сессии"
+				: "Таймер на паузе";
+	timerStartButton.disabled = timerState.isRunning || timerState.remainingSeconds === 0;
+	timerPauseButton.disabled = !timerState.isRunning;
+	timerResetButton.disabled = false;
+	timerMinutesInput.disabled = timerState.isRunning;
+	timerSecondsInput.disabled = timerState.isRunning;
+	timerSetDurationButton.disabled = timerState.isRunning;
+	timerTargetSelect.disabled = timerState.isRunning;
+	timerCompletionStatus.disabled = timerState.isRunning;
+	for (const button of document.querySelectorAll("[data-timer-add]")) button.disabled = timerState.isRunning;
+}
+
+function finishTimer() {
+	if (timerHasFinished) return;
+	if (timerInterval !== null) {
+		window.clearInterval(timerInterval);
+		timerInterval = null;
+	}
+	timerState.isRunning = false;
+	timerState.targetTimestamp = null;
+	timerState.remainingSeconds = 0;
+	timerState.isFinished = true;
+	timerHasFinished = true;
+
+	const task = tasks.find((item) => item.id === timerState.taskId);
+	let message = "Фокус-сессия завершена. Отличная работа!";
+	if (task && !task.isCompleted) {
+		task.isCompleted = timerState.completionStatus === "done";
+		task.status = timerState.completionStatus;
+		saveTasks();
+		renderCalendar();
+		renderTasks();
+		renderReminder(false);
+		message = `Таймер завершён: «${task.title}» — ${timerState.completionStatus === "done" ? "выполнено" : "в работе"}.`;
+		if (task.isCompleted) launchConfetti();
+	} else if (task?.isCompleted) {
+		message = `Таймер завершён. Задача «${task.title}» уже выполнена.`;
+	} else if (timerState.taskId) {
+		message = "Таймер завершён, но выбранная задача была удалена.";
+	} else if (timerState.tagName) {
+		message = `Фокус-сессия «${timerState.tagName}» завершена. Отличная работа!`;
+	}
+
+	timerStatus.textContent = message;
+	saveTimerState();
+	renderTimer();
+	showToast("Время вышло!");
+	if ("Notification" in window && Notification.permission === "granted") {
+		try {
+			new Notification("Фокус-сессия завершена", { body: message });
+		} catch (error) {
+			console.error("Не удалось показать уведомление о завершении таймера.", error);
+		}
+	}
+}
+
+function startTimer() {
+	if (timerState.remainingSeconds <= 0) {
+		timerStatus.textContent = "Нажмите «Сброс», чтобы начать новую сессию.";
+		return;
+	}
+	timerHasFinished = false;
+	timerState.isFinished = false;
+	timerState.isRunning = true;
+	timerState.targetTimestamp = Date.now() + timerState.remainingSeconds * 1000;
+	timerStatus.textContent = "";
+	saveTimerState();
+	renderTimer();
+	timerInterval = window.setInterval(() => {
+		renderTimer();
+		if (timerState.remainingSeconds === 0) finishTimer();
+	}, 250);
+}
+
+function pauseTimer() {
+	if (!timerState.isRunning) return;
+	timerState.remainingSeconds = Math.max(0, Math.ceil((timerState.targetTimestamp - Date.now()) / 1000));
+	if (timerState.remainingSeconds === 0) {
+		finishTimer();
+		return;
+	}
+	timerState.isRunning = false;
+	timerState.targetTimestamp = null;
+	if (timerInterval !== null) {
+		window.clearInterval(timerInterval);
+		timerInterval = null;
+	}
+	saveTimerState();
+	renderTimer();
+	timerStatus.textContent = "Таймер приостановлен.";
+}
+
+function setTimerDuration(totalSeconds) {
+	if (!Number.isInteger(totalSeconds) || totalSeconds < 1 || totalSeconds > TIMER_MAX_SECONDS) {
+		timerStatus.textContent = "Укажите время от 1 секунды до 24 часов.";
+		return false;
+	}
+	timerState.durationSeconds = totalSeconds;
+	timerState.remainingSeconds = totalSeconds;
+	timerState.isRunning = false;
+	timerState.targetTimestamp = null;
+	timerState.isFinished = false;
+	timerHasFinished = false;
+	timerStatus.textContent = "";
+	updateTimerDurationInputs();
+	saveTimerState();
+	renderTimer();
+	return true;
+}
+
+function setTimerFromInputs() {
+	const minutes = Number(timerMinutesInput.value);
+	const seconds = Number(timerSecondsInput.value);
+	const totalSeconds = minutes * 60 + seconds;
+	if (!Number.isInteger(minutes) || minutes < 0 || minutes > 1440
+		|| !Number.isInteger(seconds) || seconds < 0 || seconds > 59
+		|| totalSeconds < 1 || totalSeconds > TIMER_MAX_SECONDS) {
+		timerStatus.textContent = "Введите минуты от 0 до 1440 и секунды от 0 до 59. Общее время — от 1 секунды до 24 часов.";
+		return;
+	}
+	setTimerDuration(totalSeconds);
+}
 
 function validateTaskField(field, showError) {
 	const value = field.value.trim();
@@ -507,12 +835,82 @@ for (const field of taskFields) {
 
 taskSearchInput.addEventListener("input", renderTasks);
 taskSubjectFilter.addEventListener("change", renderTasks);
+taskTagFilter.addEventListener("change", renderTasks);
+taskTagAddButton.addEventListener("click", () => {
+	const name = taskTagNameInput.value.trim();
+	if (!name) {
+		taskTagNameInput.focus();
+		return;
+	}
+	const existingTag = getTaskTags().find((tag) => tag.name.toLocaleLowerCase("ru-RU") === name.toLocaleLowerCase("ru-RU"));
+	const tag = existingTag ?? { name, color: taskTagColorInput.value };
+	if (!selectedTaskTags.some((selectedTag) => selectedTag.name.toLocaleLowerCase("ru-RU") === name.toLocaleLowerCase("ru-RU"))
+		&& selectedTaskTags.length >= 20) {
+		showToast("К одной задаче можно добавить не более 20 тегов");
+		return;
+	}
+	selectedTaskTags = normalizeTaskTags([...selectedTaskTags, tag]);
+	taskTagNameInput.value = "";
+	renderTaskTagOptions();
+	if (existingTag) showToast(`Тег «${existingTag.name}» выбран`);
+});
+taskTagNameInput.addEventListener("keydown", (event) => {
+	if (event.key === "Enter") {
+		event.preventDefault();
+		taskTagAddButton.click();
+	}
+});
 for (const button of taskViewButtons) {
 	button.addEventListener("click", () => setTaskView(button.dataset.taskView));
 }
 for (const button of taskFilterButtons) {
 	button.addEventListener("click", () => setTaskFilter(button.dataset.taskFilter));
 }
+timerSetDurationButton.addEventListener("click", setTimerFromInputs);
+for (const button of document.querySelectorAll("[data-timer-add]")) {
+	button.addEventListener("click", () => {
+		const additionalSeconds = Number(button.dataset.timerAdd);
+		const nextDuration = Math.min(TIMER_MAX_SECONDS, timerState.durationSeconds + additionalSeconds);
+		setTimerDuration(nextDuration);
+		if (timerState.durationSeconds === TIMER_MAX_SECONDS) {
+			timerStatus.textContent = "Максимальная длительность таймера — 24 часа.";
+		}
+	});
+}
+for (const field of [timerMinutesInput, timerSecondsInput]) {
+	field.addEventListener("keydown", (event) => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			setTimerFromInputs();
+		}
+	});
+}
+timerTargetSelect.addEventListener("change", () => {
+	const [targetType, ...targetParts] = timerTargetSelect.value.split(":");
+	timerState.taskId = targetType === "task" ? targetParts.join(":") : "";
+	timerState.tagName = targetType === "tag" ? targetParts.join(":") : "";
+	saveTimerState();
+});
+timerCompletionStatus.addEventListener("change", () => {
+	timerState.completionStatus = timerCompletionStatus.value;
+	saveTimerState();
+});
+timerStartButton.addEventListener("click", startTimer);
+timerPauseButton.addEventListener("click", pauseTimer);
+timerResetButton.addEventListener("click", () => {
+	if (timerInterval !== null) {
+		window.clearInterval(timerInterval);
+		timerInterval = null;
+	}
+	timerState.isRunning = false;
+	timerState.isFinished = false;
+	timerState.targetTimestamp = null;
+	timerState.remainingSeconds = timerState.durationSeconds;
+	timerHasFinished = false;
+	timerStatus.textContent = "Таймер сброшен.";
+	saveTimerState();
+	renderTimer();
+});
 
 function setTaskView(view) {
 	activeTaskView = view;
@@ -533,6 +931,7 @@ function switchPage(pageName) {
 	addTaskButton.hidden = pageName !== "tasks";
 	if (pageName === "subjects") renderSubjectList();
 	if (pageName === "schedule") renderSchedule();
+	if (pageName === "timer") renderTimer();
 }
 
 function closeSidePanel() {
@@ -1143,6 +1542,18 @@ function createTaskElement(task) {
 	subjectLabel.textContent = task.subject || "Без предмета";
 
 	content.append(title, subjectLabel, meta);
+	if (task.tags.length) {
+		const tags = document.createElement("div");
+		tags.className = "task-item__tags";
+		for (const tag of task.tags) {
+			const tagChip = document.createElement("span");
+			tagChip.className = "task-tag";
+			tagChip.style.setProperty("--tag-color", tag.color);
+			tagChip.textContent = tag.name;
+			tags.append(tagChip);
+		}
+		content.append(tags);
+	}
 
 	if (task.description) {
 		const description = document.createElement("p");
@@ -1427,14 +1838,18 @@ function renderTasks() {
 	for (const column of taskBoardColumns) column.replaceChildren();
 	updateTaskStatistics();
 	updateSubjectSelectors();
+	updateTaskTagFilter();
+	updateTimerTargetOptions();
 	const todayDate = new Date();
 	const today = getLocalDateString(todayDate);
 	const weekEndDate = new Date(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate() + 6);
 	const weekEnd = getLocalDateString(weekEndDate);
 	const searchTerm = taskSearchInput.value.trim().toLocaleLowerCase("ru-RU");
 	const selectedSubject = taskSubjectFilter.value;
+	const selectedTag = taskTagFilter.value;
 	const visibleTasks = tasks.filter((task) => {
 		if (selectedSubject && task.subject.trim() !== selectedSubject) return false;
+		if (selectedTag && !task.tags.some((tag) => tag.name.toLocaleLowerCase("ru-RU") === selectedTag.toLocaleLowerCase("ru-RU"))) return false;
 		if (searchTerm && !`${task.title} ${task.description}`.toLocaleLowerCase("ru-RU").includes(searchTerm)) return false;
 
 		switch (activeTaskFilter) {
@@ -1487,6 +1902,7 @@ function renderTasks() {
 			resetButton.addEventListener("click", () => {
 				taskSearchInput.value = "";
 				taskSubjectFilter.value = "";
+				taskTagFilter.value = "";
 				setTaskFilter("all");
 			});
 			emptyState.append(resetButton);
@@ -1537,10 +1953,13 @@ function openTaskDialog(taskId = null) {
 		taskForm.elements.subject.value = task.subject;
 		taskForm.elements.description.value = task.description;
 		taskForm.elements.important.checked = task.isImportant;
+		selectedTaskTags = task.tags.map((tag) => ({ ...tag }));
 	} else {
 		taskForm.elements.date.value = selectedDate;
+		selectedTaskTags = [];
 	}
 
+	renderTaskTagOptions();
 	updateTaskFormValidation();
 	taskDialog.showModal();
 }
@@ -1562,6 +1981,8 @@ taskDialogCancel.addEventListener("click", () => {
 
 taskDialog.addEventListener("close", () => {
 	taskForm.reset();
+	selectedTaskTags = [];
+	renderTaskTagOptions();
 	editingTaskId = null;
 	taskDialogTitle.textContent = "Новая задача";
 	touchedFields.clear();
@@ -1583,6 +2004,7 @@ taskForm.addEventListener("submit", (event) => {
 		subject: String(formData.get("subject") ?? "").trim(),
 		description: String(formData.get("description") ?? "").trim(),
 		isImportant: formData.get("important") === "on",
+		tags: normalizeTaskTags(selectedTaskTags),
 	};
 
 	const isEditing = Boolean(editingTaskId);
@@ -1621,3 +2043,19 @@ renderSchedule();
 renderCalendar();
 renderTasks();
 renderReminder();
+updateTimerDurationInputs();
+timerCompletionStatus.value = timerState.completionStatus;
+if (timerState.isRunning) {
+	timerState.remainingSeconds = Math.max(0, Math.ceil((timerState.targetTimestamp - Date.now()) / 1000));
+	if (timerState.remainingSeconds === 0) {
+		finishTimer();
+	} else {
+		renderTimer();
+		timerInterval = window.setInterval(() => {
+			renderTimer();
+			if (timerState.remainingSeconds === 0) finishTimer();
+		}, 250);
+	}
+} else {
+	renderTimer();
+}

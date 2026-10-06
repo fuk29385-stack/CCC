@@ -67,6 +67,7 @@
     </div>
     <nav class="side-panel__links" aria-label="Основная навигация">
       <a href="#tasks-view" data-menu-page="tasks" data-menu-scroll="#tasks-title">Задачи</a>
+      <a href="#timer-view" data-menu-page="timer" data-menu-scroll="#timer-title">Таймер</a>
       <a href="#calendar-title" data-menu-page="tasks" data-menu-scroll="#calendar-title">Календарь</a>
       <a href="#subjects-view" data-menu-page="subjects">Предметы</a>
       <a href="#schedule-view" data-menu-page="schedule">Расписание</a>
@@ -76,6 +77,7 @@
 
   <nav class="app-navigation" aria-label="Разделы">
     <button type="button" data-view-button="tasks" aria-pressed="true">Задачи</button>
+    <button type="button" data-view-button="timer" aria-pressed="false">Таймер</button>
     <button type="button" data-view-button="subjects" aria-pressed="false">Предметы</button>
     <button type="button" data-view-button="schedule" aria-pressed="false">Расписание</button>
   </nav>
@@ -138,6 +140,12 @@
               <option value="">Все предметы</option>
             </select>
           </label>
+          <label class="task-tag-filter" for="task-tag-filter">
+            <span>Тег</span>
+            <select id="task-tag-filter">
+              <option value="">Все теги</option>
+            </select>
+          </label>
         </div>
       </div>
       <section class="calendar task-calendar" id="task-calendar-view" aria-labelledby="calendar-title" hidden>
@@ -187,6 +195,54 @@
         </section>
       </section>
     </section>
+    </section>
+
+    <section class="page-view timer-view" id="timer-view" data-page-view="timer" hidden aria-labelledby="timer-title">
+      <div class="page-view__header">
+        <div>
+          <h2 id="timer-title">Таймер фокусировки</h2>
+          <p class="timer-view__description">Выберите задачу или категорию и сосредоточьтесь на учёбе.</p>
+        </div>
+      </div>
+      <section class="timer-card" aria-label="Настройки таймера">
+        <div class="timer-card__settings">
+          <fieldset class="timer-duration">
+            <legend>Длительность</legend>
+            <label for="timer-minutes">Минуты</label>
+            <input id="timer-minutes" type="number" min="0" max="1440" inputmode="numeric" value="25">
+            <label for="timer-seconds">Секунды</label>
+            <input id="timer-seconds" type="number" min="0" max="59" inputmode="numeric" value="0">
+            <button class="timer-button timer-button--secondary" id="timer-set-duration" type="button">Установить</button>
+            <div class="timer-quick-buttons" role="group" aria-label="Быстрый выбор времени">
+              <button class="timer-button timer-button--secondary" type="button" data-timer-add="300">+5 мин</button>
+              <button class="timer-button timer-button--secondary" type="button" data-timer-add="1500">+25 мин</button>
+            </div>
+          </fieldset>
+          <label class="timer-select" for="timer-target">
+            <span>Задача или категория</span>
+            <select id="timer-target">
+              <option value="">Без привязки</option>
+            </select>
+          </label>
+          <label class="timer-select" for="timer-completion-status">
+            <span>Статус задачи по окончании</span>
+            <select id="timer-completion-status">
+              <option value="in-progress">В работе</option>
+              <option value="done">Выполнено</option>
+            </select>
+          </label>
+        </div>
+        <div class="timer-clock" id="timer-clock" role="timer" aria-label="Осталось времени">
+          <span class="timer-clock__digits" id="timer-display">25:00</span>
+          <span class="timer-clock__caption" id="timer-caption">Готов к фокус-сессии</span>
+        </div>
+        <div class="timer-controls" role="group" aria-label="Управление таймером">
+          <button class="timer-button timer-button--primary" id="timer-start" type="button">Старт</button>
+          <button class="timer-button timer-button--secondary" id="timer-pause" type="button" disabled>Пауза</button>
+          <button class="timer-button timer-button--secondary" id="timer-reset" type="button">Сброс</button>
+        </div>
+        <p class="timer-status" id="timer-status" role="status" aria-live="polite"></p>
+      </section>
     </section>
 
     <section class="page-view" id="subjects-view" data-page-view="subjects" hidden aria-labelledby="subjects-title">
@@ -252,6 +308,18 @@
 
       <label for="task-description">Описание</label>
       <textarea id="task-description" name="description" rows="4"></textarea>
+
+      <fieldset class="task-tag-editor">
+        <legend>Цветные теги</legend>
+        <div class="task-tag-options" id="task-tag-options"></div>
+        <div class="task-tag-create">
+          <label class="visually-hidden" for="task-tag-name">Название нового тега</label>
+          <input id="task-tag-name" type="text" maxlength="40" placeholder="Например, Самообразование">
+          <label class="visually-hidden" for="task-tag-color">Цвет нового тега</label>
+          <input id="task-tag-color" type="color" value="#4a90d9">
+          <button class="task-inline-button" id="task-tag-add" type="button">+ Создать тег</button>
+        </div>
+      </fieldset>
 
       <label for="task-important">
         <input id="task-important" name="important" type="checkbox">

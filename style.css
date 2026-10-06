@@ -1654,3 +1654,341 @@ main {
 		transition-duration: 0.01ms !important;
 	}
 }
+
+.task-filters {
+	grid-template-columns: minmax(0, 1fr) repeat(2, minmax(10rem, 14rem));
+}
+
+.task-tag-filter {
+	display: grid;
+	min-width: 0;
+	gap: 0.35rem;
+	color: var(--color-muted);
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.task-tag-filter select,
+.timer-select select {
+	width: 100%;
+	min-width: 0;
+	min-height: 2.65rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	color: var(--color-ink);
+	background: var(--color-surface);
+}
+
+.task-tag {
+	display: inline-flex;
+	max-width: 100%;
+	align-items: center;
+	padding: 0.25rem 0.55rem;
+	border-inline-start: 0.25rem solid var(--tag-color, var(--color-accent));
+	border-radius: 4px;
+	color: #18352d;
+	background: color-mix(in srgb, var(--tag-color, var(--color-accent)) 20%, white);
+	font-size: 0.8rem;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.task-item__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin-top: 0.5rem;
+}
+
+.task-tag-editor {
+	display: grid;
+	gap: 0.65rem;
+	margin: 0;
+	padding: 0.85rem;
+	border: 1px solid #cbd8cc;
+	border-radius: 5px;
+}
+
+.task-tag-editor legend {
+	padding-inline: 0.25rem;
+	color: #465d53;
+	font-size: 0.9rem;
+	font-weight: 600;
+}
+
+.task-tag-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.task-tag-option {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+}
+
+.task-tag-option input {
+	width: 1rem;
+	height: 1rem;
+	margin: 0;
+	accent-color: var(--color-accent);
+}
+
+.task-tag-create {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 3rem auto;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.task-tag-create input[type="text"] {
+	width: 100%;
+	min-width: 0;
+	min-height: 2.5rem;
+	padding: 0.5rem 0.65rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	color: var(--color-ink);
+	background: var(--color-surface);
+}
+
+.task-tag-create input[type="color"] {
+	width: 3rem;
+	min-height: 2.5rem;
+	padding: 0.2rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	background: var(--color-surface);
+	cursor: pointer;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	clip-path: inset(50%);
+}
+
+.timer-view {
+	width: min(100%, 48rem);
+	align-self: center;
+}
+
+.timer-view__description {
+	margin: 0.45rem 0 0;
+	color: var(--color-muted);
+}
+
+.timer-card {
+	display: grid;
+	gap: 1.5rem;
+	padding: clamp(1rem, 4vw, 2rem);
+	border: 1px solid var(--color-line);
+	border-radius: 12px;
+	background: var(--color-surface);
+	box-shadow: 0 12px 32px rgb(24 53 45 / 8%);
+}
+
+.timer-card__settings {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+}
+
+.timer-duration {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	align-items: end;
+	gap: 0.55rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.timer-duration legend {
+	grid-column: 1 / -1;
+	margin-bottom: 0.25rem;
+	color: var(--color-muted);
+	font-size: 0.85rem;
+	font-weight: 600;
+}
+
+.timer-duration label,
+.timer-select span {
+	display: grid;
+	gap: 0.35rem;
+	color: var(--color-muted);
+	font-size: 0.8rem;
+	font-weight: 600;
+}
+
+.timer-duration input,
+.timer-select select {
+	min-width: 0;
+	min-height: 2.75rem;
+	padding: 0.55rem 0.7rem;
+	border: 1px solid var(--color-line);
+	border-radius: 5px;
+	color: var(--color-text);
+	background: var(--color-page);
+}
+
+.timer-select {
+	display: grid;
+	align-content: end;
+	gap: 0.35rem;
+}
+
+.timer-quick-buttons {
+	display: flex;
+	grid-column: 1 / -1;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.timer-button {
+	min-height: 2.75rem;
+	padding: 0.6rem 1rem;
+	border: 1px solid var(--color-line);
+	border-radius: 6px;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.timer-button--primary {
+	border-color: var(--color-accent);
+	color: #102d1a;
+	background: var(--color-accent);
+}
+
+.timer-button--secondary {
+	color: var(--color-text);
+	background: var(--color-surface);
+}
+
+.timer-button:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.timer-clock {
+	display: grid;
+	min-height: 15rem;
+	align-content: center;
+	justify-items: center;
+	gap: 0.5rem;
+	padding: 1.5rem;
+	border: 1px solid #31583f;
+	border-radius: 10px;
+	color: #f5fff4;
+	background: radial-gradient(ellipse at top, #31583f, #18352d 75%);
+	transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.timer-clock.is-complete {
+	border-color: #82d58d;
+	background: radial-gradient(ellipse at top, #348148, #18352d 75%);
+	animation: timer-finished 800ms ease-in-out 2;
+}
+
+.timer-clock__digits {
+	font-size: clamp(4rem, 16vw, 7rem);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.04em;
+	line-height: 1;
+}
+
+.timer-clock__caption {
+	color: #cce4d0;
+	font-size: 0.95rem;
+	text-align: center;
+}
+
+.timer-controls {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+}
+
+.timer-controls .timer-button {
+	min-width: 7rem;
+}
+
+.timer-status {
+	min-height: 1.5em;
+	margin: 0;
+	color: var(--color-muted);
+	font-size: 0.9rem;
+	text-align: center;
+}
+
+@keyframes timer-finished {
+	50% { box-shadow: 0 0 0 6px rgb(105 209 131 / 24%); }
+}
+
+:root[data-theme="dark"] .task-tag-editor {
+	border-color: var(--color-line);
+}
+
+:root[data-theme="dark"] .task-tag-editor legend,
+:root[data-theme="dark"] .task-tag-filter select,
+:root[data-theme="dark"] .timer-select select {
+	color: var(--color-text);
+}
+
+:root[data-theme="dark"] .task-tag-create input[type="text"],
+:root[data-theme="dark"] .task-tag-create input[type="color"],
+:root[data-theme="dark"] .timer-duration input,
+:root[data-theme="dark"] .timer-button--secondary {
+	border-color: var(--color-line);
+	color: var(--color-text);
+	background: #142019;
+}
+
+@media (max-width: 600px) {
+	.task-filters {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.timer-card__settings {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.timer-duration {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.timer-quick-buttons {
+		grid-column: 1 / -1;
+	}
+}
+
+@media (max-width: 480px) {
+	.app-navigation {
+		gap: 0.1rem;
+		padding-inline: 0.35rem;
+	}
+
+	.app-navigation button {
+		padding-inline: 0.25rem;
+		font-size: 0.78rem;
+	}
+
+	.task-tag-create {
+		grid-template-columns: minmax(0, 1fr) 2.75rem;
+	}
+
+	.task-tag-create .task-inline-button {
+		grid-column: 1 / -1;
+	}
+}
