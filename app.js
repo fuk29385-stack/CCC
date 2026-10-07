@@ -1,3 +1,123 @@
+const USERS_STORAGE_KEY = "users";
+const CURRENT_USER_STORAGE_KEY = "currentUser";
+
+const authScreen = document.querySelector("#auth-screen");
+const loginForm = document.querySelector("#login-form");
+const registerForm = document.querySelector("#register-form");
+const loginTab = document.querySelector("#auth-login-tab");
+const registerTab = document.querySelector("#auth-register-tab");
+const authUser = document.querySelector("#auth-user");
+const authGreeting = document.querySelector("#auth-greeting");
+const logoutButton = document.querySelector("#auth-logout");
+
+function readUsers() {
+	try {
+		const users = JSON.parse(localStorage.getItem(USERS_STORAGE_KEY) ?? "[]");
+		return Array.isArray(users) ? users : [];
+	} catch (error) {
+		console.error("Не удалось загрузить список пользователей.", error);
+		return [];
+	}
+}
+
+function checkAuth() {
+	let currentUser = null;
+	try {
+		currentUser = JSON.parse(localStorage.getItem(CURRENT_USER_STORAGE_KEY) ?? "null");
+	} catch (error) {
+		console.error("Не удалось загрузить текущего пользователя.", error);
+	}
+
+	const isAuthenticated = currentUser
+		&& typeof currentUser.name === "string"
+		&& typeof currentUser.status === "string";
+	document.body.classList.toggle("is-authenticated", Boolean(isAuthenticated));
+	authScreen.hidden = Boolean(isAuthenticated);
+	authUser.hidden = !isAuthenticated;
+	if (isAuthenticated) {
+		authGreeting.textContent = `Привет, ${currentUser.name} (${currentUser.status})!`;
+	} else {
+		loginForm.elements.namedItem("login").focus();
+	}
+}
+
+function showAuthForm(formName) {
+	const showLogin = formName === "login";
+	loginForm.hidden = !showLogin;
+	registerForm.hidden = showLogin;
+	loginTab.setAttribute("aria-selected", String(showLogin));
+	registerTab.setAttribute("aria-selected", String(!showLogin));
+}
+
+loginTab.addEventListener("click", () => showAuthForm("login"));
+registerTab.addEventListener("click", () => showAuthForm("register"));
+
+registerForm.addEventListener("submit", (event) => {
+	event.preventDefault();
+	const formData = new FormData(registerForm);
+	const name = formData.get("name").trim();
+	const login = formData.get("login").trim();
+	const password = formData.get("password");
+	const status = formData.get("status");
+	const users = readUsers();
+	const normalizedLogin = login.toLocaleLowerCase("ru-RU");
+	if (users.some((user) => user && typeof user.login === "string" && user.login.toLocaleLowerCase("ru-RU") === normalizedLogin)) {
+		alert("Пользователь с таким логином уже зарегистрирован.");
+		return;
+	}
+
+	users.push({ login, password, name, status });
+	try {
+		localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+	} catch (error) {
+		console.error("Не удалось сохранить нового пользователя.", error);
+		alert("Не удалось сохранить пользователя в этом браузере.");
+		return;
+	}
+
+	loginForm.elements.namedItem("login").value = login;
+	registerForm.reset();
+	showAuthForm("login");
+	alert("Регистрация завершена. Теперь войдите в аккаунт.");
+});
+
+loginForm.addEventListener("submit", (event) => {
+	event.preventDefault();
+	const formData = new FormData(loginForm);
+	const login = formData.get("login").trim();
+	const password = formData.get("password");
+	const normalizedLogin = login.toLocaleLowerCase("ru-RU");
+	const user = readUsers().find((item) => item && typeof item.login === "string"
+		&& item.login.toLocaleLowerCase("ru-RU") === normalizedLogin
+		&& item.password === password);
+	if (!user) {
+		alert("Неверный логин или пароль.");
+		return;
+	}
+
+	try {
+		localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify({
+			login: user.login,
+			name: user.name,
+			status: user.status,
+		}));
+	} catch (error) {
+		console.error("Не удалось сохранить текущего пользователя.", error);
+		alert("Не удалось войти в этом браузере.");
+		return;
+	}
+	loginForm.reset();
+	checkAuth();
+});
+
+logoutButton.addEventListener("click", () => {
+	localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
+	checkAuth();
+	showAuthForm("login");
+});
+
+checkAuth();
+
 const STORAGE_KEY = "college-control-center.tasks";
 const SUBJECT_STORAGE_KEY = "college-control-center.subjects";
 const SCHEDULE_STORAGE_KEY = "college-control-center.schedule";

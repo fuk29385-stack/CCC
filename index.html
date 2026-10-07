@@ -38,6 +38,41 @@
   
 </head>
 <body>
+  <section class="auth-screen" id="auth-screen" aria-labelledby="auth-title">
+    <div class="auth-panel">
+      <p class="auth-panel__brand">College Control Center</p>
+      <h1 id="auth-title">Добро пожаловать</h1>
+      <p class="auth-panel__description">Войдите или создайте аккаунт, чтобы продолжить.</p>
+      <div class="auth-tabs" role="tablist" aria-label="Вход или регистрация">
+        <button class="auth-tab" id="auth-login-tab" type="button" role="tab" aria-selected="true" aria-controls="login-form">Войти</button>
+        <button class="auth-tab" id="auth-register-tab" type="button" role="tab" aria-selected="false" aria-controls="register-form">Зарегистрироваться</button>
+      </div>
+      <form class="auth-form" id="login-form" autocomplete="on">
+        <label for="login-username">Логин</label>
+        <input id="login-username" name="login" type="text" autocomplete="username" maxlength="40" required>
+        <label for="login-password">Пароль</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+        <button class="auth-submit" type="submit">Войти</button>
+      </form>
+      <form class="auth-form" id="register-form" autocomplete="on" hidden>
+        <label for="register-name">Имя</label>
+        <input id="register-name" name="name" type="text" autocomplete="name" maxlength="60" required>
+        <label for="register-username">Логин</label>
+        <input id="register-username" name="login" type="text" autocomplete="username" maxlength="40" required>
+        <label for="register-password">Пароль</label>
+        <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="6" required>
+        <label for="register-status">Кто вы?</label>
+        <select id="register-status" name="status" required>
+          <option value="Школьник">Школьник</option>
+          <option value="Студент">Студент</option>
+          <option value="Взрослый">Взрослый</option>
+          <option value="Преподаватель">Преподаватель</option>
+        </select>
+        <button class="auth-submit" type="submit">Зарегистрироваться</button>
+      </form>
+    </div>
+  </section>
+
   <header class="app-header">
     <button class="icon-button" id="menu-open" type="button" aria-label="Открыть меню" aria-controls="side-panel" aria-expanded="false">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24">
@@ -45,6 +80,10 @@
       </svg>
     </button>
     <h1>College Control Center</h1>
+    <div class="auth-user" id="auth-user" hidden>
+      <output class="auth-user__greeting" id="auth-greeting"></output>
+      <button class="auth-logout" id="auth-logout" type="button">Выйти</button>
+    </div>
     <output class="streak-badge" id="streak-badge" aria-label="Текущая серия активности: 0 дней" title="Выполняйте хотя бы одну задачу каждый день">
       <span aria-hidden="true">🔥</span>
       <span id="streak-count">0 дней</span>
