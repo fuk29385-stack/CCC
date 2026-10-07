@@ -96,6 +96,11 @@ a:focus-visible,
 	font-weight: 600;
 }
 
+.app-header #menu-open {
+	display: grid;
+	flex: 0 0 2.75rem;
+}
+
 body:not(.is-authenticated) > :not(#auth-screen):not(script) {
 	display: none !important;
 }
@@ -2753,5 +2758,33 @@ body,
 		gap: 0.2rem;
 		padding-inline: 0.4rem;
 		font-size: 0.76rem;
+	}
+}
+
+@media (max-width: 760px) {
+	.app-navigation {
+		justify-content: flex-start;
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	.app-navigation::-webkit-scrollbar {
+		display: none;
+	}
+
+	.app-navigation__eyebrow {
+		display: none;
+	}
+
+	.app-navigation button {
+		flex: 0 0 auto;
+		gap: 0.45rem;
+		white-space: nowrap;
+	}
+
+	.app-navigation__icon {
+		width: 1rem;
+		height: 1rem;
+		flex: 0 0 auto;
 	}
 }

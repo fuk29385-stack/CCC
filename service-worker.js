@@ -1,4 +1,4 @@
-const CACHE_NAME = "college-control-center-v8";
+const CACHE_NAME = "college-control-center-v9";
 const APP_ROOT = new URL("./", self.registration.scope);
 const APP_FILES = [
 	"./",
