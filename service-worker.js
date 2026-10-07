@@ -1,4 +1,4 @@
-const CACHE_NAME = "college-control-center-v9";
+const CACHE_NAME = "college-control-center-v10";
 const APP_ROOT = new URL("./", self.registration.scope);
 const APP_FILES = [
 	"./",
@@ -37,20 +37,26 @@ self.addEventListener("fetch", (event) => {
 	if (event.request.method !== "GET" || requestUrl.origin !== APP_ROOT.origin) return;
 	if (!requestUrl.pathname.startsWith(APP_ROOT.pathname)) return;
 
-	event.respondWith(
-		caches.match(event.request)
-			.then((cachedResponse) => cachedResponse || fetch(event.request)
-				.then((response) => {
-					if (!response.ok) return response;
-					const responseCopy = response.clone();
-					caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseCopy));
-					return response;
-				}))
+	const responsePromise = event.request.mode === "navigate"
+		? fetch(event.request)
+			.then(async (response) => {
+				if (!response.ok) return response;
+				const cache = await caches.open(CACHE_NAME);
+				await cache.put(event.request, response.clone());
+				return response;
+			})
 			.catch(async () => {
-				if (event.request.mode === "navigate") {
-					return caches.match(new URL("index.html", APP_ROOT).href);
-				}
-				throw new Error(`Не удалось загрузить ресурс ${event.request.url} без подключения к интернету.`);
-			}),
-	);
+				const cachedPage = await caches.match(event.request);
+				return cachedPage || caches.match(new URL("index.html", APP_ROOT).href);
+			})
+		: caches.match(event.request)
+			.then((cachedResponse) => cachedResponse || fetch(event.request)
+				.then(async (response) => {
+					if (!response.ok) return response;
+					const cache = await caches.open(CACHE_NAME);
+					await cache.put(event.request, response.clone());
+					return response;
+				}));
+
+	event.respondWith(responsePromise);
 });
